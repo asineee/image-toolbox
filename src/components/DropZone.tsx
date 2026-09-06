@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { Upload, Image as ImageIcon, ShieldAlert, Sparkles, FileImage, CheckCircle2 } from 'lucide-react';
+import { Upload, ShieldAlert, Sparkles, FileImage, CheckCircle2 } from 'lucide-react';
 import { SAMPLE_IMAGES } from '../utils/sampleImages';
 
 interface DropZoneProps {
@@ -9,7 +9,9 @@ interface DropZoneProps {
   isProcessing?: boolean;
 }
 
-export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, isProcessing = false }) => {
+const SUPPORTED_EXT_REGEX = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
+
+export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,8 +30,11 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, isProcessin
 
   const validateAndSelectFile = (file: File) => {
     setErrorMessage(null);
-    if (!file.type.startsWith('image/')) {
-      setErrorMessage('Please select a valid image file (JPG, PNG, or WebP).');
+    const isImageMime = file.type && file.type.startsWith('image/');
+    const isImageExt = SUPPORTED_EXT_REGEX.test(file.name);
+
+    if (!isImageMime && !isImageExt) {
+      setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF, or BMP).');
       return;
     }
     // Warn if file is over 50MB
@@ -54,6 +59,8 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, isProcessin
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       validateAndSelectFile(file);
+      // Reset input value so selecting the exact same file again triggers onChange
+      e.target.value = '';
     }
   };
 

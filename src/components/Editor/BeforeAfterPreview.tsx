@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, memo } from 'react';
-import { ProcessedImageResult, ImageMetadata } from '../../types/image';
+import React, { useState, useRef, memo } from 'react';
+import { ProcessedImageResult, ImageMetadata, ToolType, CropRect } from '../../types/image';
 import { Eye, EyeOff, Layers, Download, Loader2 } from 'lucide-react';
+import { CropOverlay } from './CropOverlay';
 
 interface BeforeAfterPreviewProps {
   originalUrl: string;
@@ -10,6 +11,9 @@ interface BeforeAfterPreviewProps {
   metadata: ImageMetadata;
   isProcessing: boolean;
   onDownload: () => void;
+  activeTool?: ToolType;
+  cropRect?: CropRect;
+  onCropRectChange?: (newRect: CropRect) => void;
 }
 
 export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
@@ -18,11 +22,18 @@ export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
   metadata,
   isProcessing,
   onDownload,
+  activeTool,
+  cropRect,
+  onCropRectChange,
 }) => {
   const [showOriginal, setShowOriginal] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Preserve previous preview or fallback to original URL; never disappear
   const activeSrc = showOriginal || !processedResult ? originalUrl : processedResult.dataUrl;
+
+  const currentW = processedResult ? processedResult.width : metadata.width;
+  const currentH = processedResult ? processedResult.height : metadata.height;
 
   return (
     <div className="flex flex-col h-full bg-dark-900/60 rounded-3xl border border-gray-800/80 overflow-hidden shadow-2xl">
@@ -47,7 +58,7 @@ export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
               <span>{processedResult ? processedResult.formattedSize : metadata.formattedSize}</span>
               <span>•</span>
               <span>
-                {processedResult ? `${processedResult.width}×${processedResult.height}` : `${metadata.width}×${metadata.height}`}
+                {currentW}×{currentH}
               </span>
             </div>
           </div>
@@ -109,17 +120,31 @@ export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
         )}
 
         {/* Stable image preview container */}
-        <div className="relative max-w-full max-h-full flex items-center justify-center group">
+        <div className="relative max-w-full max-h-full flex items-center justify-center group overflow-visible">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            ref={imgRef}
             src={activeSrc}
             alt={metadata.filename}
             className="max-w-full max-h-[60vh] object-contain rounded-xl shadow-2xl border border-gray-800 transition-all duration-200"
           />
+          
           {showOriginal && (
             <div className="absolute top-4 left-4 px-3 py-1 rounded-lg bg-amber-500 text-black font-extrabold text-xs shadow-lg uppercase tracking-wider">
               ORIGINAL VIEW
             </div>
+          )}
+
+          {/* Interactive Crop Selection Overlay (Keyed by image src for clean state sync) */}
+          {activeTool === 'crop' && cropRect && onCropRectChange && !showOriginal && (
+            <CropOverlay
+              key={activeSrc}
+              imageElement={imgRef.current}
+              cropRect={cropRect}
+              onChange={onCropRectChange}
+              imageWidth={currentW}
+              imageHeight={currentH}
+            />
           )}
         </div>
       </div>

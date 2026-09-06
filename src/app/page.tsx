@@ -17,7 +17,7 @@ export default function HomePage() {
     originalFile: null,
     originalImage: null,
     metadata: null,
-    activeTool: 'resize',
+    activeTool: 'crop',
     settings: {
       resize: {
         width: 0,
@@ -35,6 +35,10 @@ export default function HomePage() {
         rotation: 0,
         flipHorizontal: false,
         flipVertical: false,
+      },
+      crop: {
+        active: false,
+        rect: null,
       },
     },
     processedResult: null,
@@ -70,6 +74,10 @@ export default function HomePage() {
           flipHorizontal: false,
           flipVertical: false,
         },
+        crop: {
+          active: false,
+          rect: null,
+        },
       };
 
       setImageState({
@@ -85,7 +93,7 @@ export default function HomePage() {
           aspectRatio: ratioStr,
           lastModified: file.lastModified,
         },
-        activeTool: 'resize',
+        activeTool: 'crop',
         settings: initialSettings,
         processedResult: null,
         isProcessing: false,
@@ -134,6 +142,10 @@ export default function HomePage() {
             flipHorizontal: false,
             flipVertical: false,
           },
+          crop: {
+            active: false,
+            rect: null,
+          },
         },
       };
     });
@@ -144,12 +156,13 @@ export default function HomePage() {
       originalFile: null,
       originalImage: null,
       metadata: null,
-      activeTool: 'resize',
+      activeTool: 'crop',
       settings: {
         resize: { width: 0, height: 0, maintainAspectRatio: true, aspectRatio: 1 },
         compress: { quality: 0.8 },
         convert: { format: 'image/jpeg' },
         rotateFlip: { rotation: 0, flipHorizontal: false, flipVertical: false },
+        crop: { active: false, rect: null },
       },
       processedResult: null,
       isProcessing: false,

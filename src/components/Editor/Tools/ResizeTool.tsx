@@ -27,6 +27,15 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
     setHeightInput(String(settings.height || ''));
   }, [settings.width, settings.height]);
 
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const scheduleChange = (newSettings: ResizeSettings) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -79,6 +88,20 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
         ...settings,
         height: val,
       });
+    }
+  };
+
+  const handleWidthBlur = () => {
+    const val = parseInt(widthInput, 10);
+    if (!val || val <= 0) {
+      setWidthInput(String(settings.width));
+    }
+  };
+
+  const handleHeightBlur = () => {
+    const val = parseInt(heightInput, 10);
+    if (!val || val <= 0) {
+      setHeightInput(String(settings.height));
     }
   };
 
@@ -167,9 +190,10 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
           <input
             type="number"
             min="1"
-            max="10000"
+            max="50000"
             value={widthInput}
             onChange={handleWidthChange}
+            onBlur={handleWidthBlur}
             className="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-gray-700 text-white font-mono text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all"
           />
         </div>
@@ -179,9 +203,10 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
           <input
             type="number"
             min="1"
-            max="10000"
+            max="50000"
             value={heightInput}
             onChange={handleHeightChange}
+            onBlur={handleHeightBlur}
             className="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-gray-700 text-white font-mono text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all"
           />
         </div>

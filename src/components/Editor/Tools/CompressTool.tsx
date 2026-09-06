@@ -26,6 +26,15 @@ export const CompressTool: React.FC<CompressToolProps> = memo(({
     setLocalQuality(settings.quality);
   }, [settings.quality]);
 
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
   const qualityPercentage = Math.round(localQuality * 100);
 
   const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {

@@ -1,5 +1,5 @@
 export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return '0 Bytes';
+  if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 Bytes';
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -8,7 +8,7 @@ export function formatBytes(bytes: number, decimals = 2): string {
 }
 
 export function calculateAspectRatioStr(width: number, height: number): string {
-  if (!width || !height) return 'N/A';
+  if (!width || !height || width <= 0 || height <= 0) return 'N/A';
   
   const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
   const divisor = gcd(width, height);

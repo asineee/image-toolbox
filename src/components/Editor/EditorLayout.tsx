@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { ImageState, ToolType, ProcessingSettings } from '../../types/image';
+import { ImageState, ToolType, ProcessingSettings, CropRect } from '../../types/image';
 import { processImagePipeline, generateOutputFilename } from '../../utils/imageProcessor';
 import { BeforeAfterPreview } from './BeforeAfterPreview';
 import { ResizeTool } from './Tools/ResizeTool';
@@ -9,6 +9,7 @@ import { CompressTool } from './Tools/CompressTool';
 import { ConvertTool } from './Tools/ConvertTool';
 import { RotateFlipTool } from './Tools/RotateFlipTool';
 import { ImageInfoTool } from './Tools/ImageInfoTool';
+import { CropTool } from './Tools/CropTool';
 import { 
   Maximize2, 
   FileArchive, 
@@ -16,7 +17,8 @@ import {
   RotateCw, 
   Info, 
   Download,
-  RotateCcw
+  RotateCcw,
+  Crop
 } from 'lucide-react';
 
 interface EditorLayoutProps {
@@ -32,11 +34,27 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
   onUpdateState,
   onResetEdits,
 }) => {
-  const [activeTool, setActiveTool] = useState<ToolType>('resize');
+  const [activeTool, setActiveTool] = useState<ToolType>('crop');
   const [originalObjUrl, setOriginalObjUrl] = useState<string>('');
-  
+
+  // Local state for interactive crop selection box (0..1 normalized coordinates)
+  const [cropRect, setCropRect] = useState<CropRect>({
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+  });
+
   // Track request IDs to discard out-of-order stale async processing results
   const requestIdRef = useRef<number>(0);
+  const prevDataUrlRef = useRef<string | null>(null);
+
+  // Sync cropRect when crop is reset or external state resets
+  useEffect(() => {
+    if (!imageState.settings.crop.active && !imageState.settings.crop.rect) {
+      setCropRect({ x: 0, y: 0, width: 1, height: 1 });
+    }
+  }, [imageState.settings.crop.active, imageState.settings.crop.rect]);
 
   // Create local Object URL for original image preview
   useEffect(() => {
@@ -49,7 +67,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
     }
   }, [imageState.originalFile]);
 
-  // Run image processing pipeline with race-condition check
+  // Clean up previous blob URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (prevDataUrlRef.current) {
+        URL.revokeObjectURL(prevDataUrlRef.current);
+        prevDataUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  // Run image processing pipeline with race-condition check & memory cleanup
   const runPipeline = useCallback(async () => {
     if (!imageState.originalImage || !imageState.metadata) return;
 
@@ -65,7 +93,14 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
 
       // Verify this is still the latest request before applying state update
       if (currentReqId === requestIdRef.current) {
+        if (prevDataUrlRef.current && prevDataUrlRef.current !== result.dataUrl) {
+          URL.revokeObjectURL(prevDataUrlRef.current);
+        }
+        prevDataUrlRef.current = result.dataUrl;
+
         onUpdateState({ processedResult: result, isProcessing: false });
+      } else {
+        URL.revokeObjectURL(result.dataUrl);
       }
     } catch (err: any) {
       if (currentReqId === requestIdRef.current) {
@@ -98,7 +133,66 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
     document.body.removeChild(a);
   }, [imageState.processedResult, imageState.metadata, activeTool, imageState.settings.convert.format]);
 
+  // Crop Action Handlers
+  const handleCropRectChange = useCallback((newRect: CropRect) => {
+    setCropRect(newRect);
+  }, []);
+
+  const handleApplyCrop = useCallback(() => {
+    if (!imageState.metadata) return;
+    const currentW = imageState.processedResult ? imageState.processedResult.width : imageState.metadata.width;
+    const currentH = imageState.processedResult ? imageState.processedResult.height : imageState.metadata.height;
+
+    const newPixelW = Math.max(1, Math.round(cropRect.width * currentW));
+    const newPixelH = Math.max(1, Math.round(cropRect.height * currentH));
+
+    onUpdateSettings({
+      ...imageState.settings,
+      resize: {
+        ...imageState.settings.resize,
+        width: newPixelW,
+        height: newPixelH,
+        aspectRatio: newPixelW / newPixelH,
+      },
+      crop: {
+        active: true,
+        rect: cropRect,
+      },
+    });
+
+    // Reset crop selection rectangle to full 100% bounds for the newly cropped image
+    setCropRect({ x: 0, y: 0, width: 1, height: 1 });
+  }, [cropRect, imageState.metadata, imageState.processedResult, imageState.settings, onUpdateSettings]);
+
+  const handleResetCropRect = useCallback(() => {
+    setCropRect({ x: 0, y: 0, width: 1, height: 1 });
+  }, []);
+
+  const handleCancelCrop = useCallback(() => {
+    if (!imageState.metadata) return;
+
+    setCropRect({ x: 0, y: 0, width: 1, height: 1 });
+
+    const origW = imageState.metadata.width;
+    const origH = imageState.metadata.height;
+
+    onUpdateSettings({
+      ...imageState.settings,
+      resize: {
+        ...imageState.settings.resize,
+        width: origW,
+        height: origH,
+        aspectRatio: origW / origH,
+      },
+      crop: {
+        active: false,
+        rect: null,
+      },
+    });
+  }, [imageState.metadata, imageState.settings, onUpdateSettings]);
+
   const tools: { id: ToolType; label: string; icon: any }[] = [
+    { id: 'crop', label: 'Crop', icon: Crop },
     { id: 'resize', label: 'Resize', icon: Maximize2 },
     { id: 'compress', label: 'Compress', icon: FileArchive },
     { id: 'convert', label: 'Convert', icon: FileType },
@@ -107,6 +201,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
   ];
 
   if (!imageState.metadata) return null;
+
+  const currentW = imageState.processedResult ? imageState.processedResult.width : imageState.metadata.width;
+  const currentH = imageState.processedResult ? imageState.processedResult.height : imageState.metadata.height;
 
   return (
     <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
@@ -154,6 +251,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
 
           {/* Active Tool Settings Box */}
           <div className="p-6 rounded-3xl bg-dark-800/80 border border-gray-800/80 shadow-xl min-h-[340px]">
+            {activeTool === 'crop' && (
+              <CropTool
+                cropSettings={imageState.settings.crop}
+                imageWidth={currentW}
+                imageHeight={currentH}
+                onApplyCrop={handleApplyCrop}
+                onResetCropRect={handleResetCropRect}
+                onCancelCrop={handleCancelCrop}
+              />
+            )}
+
             {activeTool === 'resize' && (
               <ResizeTool
                 originalWidth={imageState.metadata.width}
@@ -230,6 +338,9 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
             metadata={imageState.metadata}
             isProcessing={imageState.isProcessing}
             onDownload={handleDownload}
+            activeTool={activeTool}
+            cropRect={cropRect}
+            onCropRectChange={handleCropRectChange}
           />
         </div>
       </div>

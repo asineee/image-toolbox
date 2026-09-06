@@ -1,6 +1,6 @@
 export type TargetFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
-export type ToolType = 'resize' | 'compress' | 'convert' | 'rotate' | 'flip' | 'info';
+export type ToolType = 'resize' | 'compress' | 'convert' | 'rotate' | 'flip' | 'info' | 'crop';
 
 export interface ImageMetadata {
   filename: string;
@@ -34,11 +34,24 @@ export interface RotateFlipSettings {
   flipVertical: boolean;
 }
 
+export interface CropRect {
+  x: number;      // 0.0 to 1.0 (normalized X relative to rotated image width)
+  y: number;      // 0.0 to 1.0 (normalized Y relative to rotated image height)
+  width: number;  // 0.0 to 1.0 (normalized width)
+  height: number; // 0.0 to 1.0 (normalized height)
+}
+
+export interface CropSettings {
+  active: boolean;
+  rect: CropRect | null;
+}
+
 export interface ProcessingSettings {
   resize: ResizeSettings;
   compress: CompressSettings;
   convert: ConvertSettings;
   rotateFlip: RotateFlipSettings;
+  crop: CropSettings;
 }
 
 export interface ProcessedImageResult {

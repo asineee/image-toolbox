@@ -1,12 +1,17 @@
 import { ProcessingSettings, ProcessedImageResult, TargetFormat } from '../types/image';
 import { formatBytes, mimeToExtension } from './formatters';
 
+const SUPPORTED_EXT_REGEX = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
+
 /**
  * Loads an HTMLImageElement safely from a File object.
  */
 export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
+    const isImageMime = file.type && file.type.startsWith('image/');
+    const isImageExt = SUPPORTED_EXT_REGEX.test(file.name);
+
+    if (!isImageMime && !isImageExt) {
       return reject(new Error('Selected file is not a valid image.'));
     }
 
@@ -33,7 +38,7 @@ export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
 /**
  * Core image processing pipeline:
  * Takes an original HTMLImageElement and ProcessingSettings,
- * performs rotation, flipping, resizing, format conversion, and quality compression in HTML5 Canvas.
+ * performs rotation, flipping, cropping, resizing, format conversion, and quality compression in HTML5 Canvas.
  */
 export async function processImagePipeline(
   sourceImg: HTMLImageElement,
@@ -42,14 +47,12 @@ export async function processImagePipeline(
 ): Promise<ProcessedImageResult> {
   return new Promise((resolve, reject) => {
     try {
-      const { resize, compress, convert, rotateFlip } = settings;
-      const targetWidth = Math.max(1, Math.round(resize.width));
-      const targetHeight = Math.max(1, Math.round(resize.height));
+      const { resize, compress, convert, rotateFlip, crop } = settings;
 
       const normRotation = ((rotateFlip.rotation % 360) + 360) % 360;
       const is90or270 = normRotation === 90 || normRotation === 270;
 
-      // 1. First canvas for rotation & flipping
+      // 1. Rotate & Flip canvas
       const rotCanvas = document.createElement('canvas');
       const rotCtx = rotCanvas.getContext('2d');
 
@@ -63,6 +66,11 @@ export async function processImagePipeline(
       } else {
         rotCanvas.width = sourceImg.width;
         rotCanvas.height = sourceImg.height;
+      }
+
+      if (convert.format === 'image/jpeg') {
+        rotCtx.fillStyle = '#ffffff';
+        rotCtx.fillRect(0, 0, rotCanvas.width, rotCanvas.height);
       }
 
       rotCtx.save();
@@ -80,7 +88,34 @@ export async function processImagePipeline(
       );
       rotCtx.restore();
 
-      // 2. Main target canvas for final resize output
+      // 2. Crop processing (if crop is active and rect is valid)
+      let sourceForOutput: HTMLCanvasElement = rotCanvas;
+
+      if (crop && crop.active && crop.rect) {
+        const cropX = Math.max(0, Math.min(rotCanvas.width - 1, Math.round(crop.rect.x * rotCanvas.width)));
+        const cropY = Math.max(0, Math.min(rotCanvas.height - 1, Math.round(crop.rect.y * rotCanvas.height)));
+        const cropW = Math.max(1, Math.min(rotCanvas.width - cropX, Math.round(crop.rect.width * rotCanvas.width)));
+        const cropH = Math.max(1, Math.min(rotCanvas.height - cropY, Math.round(crop.rect.height * rotCanvas.height)));
+
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = cropW;
+        cropCanvas.height = cropH;
+
+        const cropCtx = cropCanvas.getContext('2d');
+        if (cropCtx) {
+          if (convert.format === 'image/jpeg') {
+            cropCtx.fillStyle = '#ffffff';
+            cropCtx.fillRect(0, 0, cropW, cropH);
+          }
+          cropCtx.drawImage(rotCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+          sourceForOutput = cropCanvas;
+        }
+      }
+
+      // 3. Final Resize & Output Canvas
+      const targetWidth = Math.max(1, Math.round(resize.width || sourceForOutput.width));
+      const targetHeight = Math.max(1, Math.round(resize.height || sourceForOutput.height));
+
       const outCanvas = document.createElement('canvas');
       outCanvas.width = targetWidth;
       outCanvas.height = targetHeight;
@@ -90,7 +125,6 @@ export async function processImagePipeline(
         return reject(new Error('Browser 2D context failed for final output.'));
       }
 
-      // Fill background white if converting PNG with transparency to JPEG
       if (convert.format === 'image/jpeg') {
         outCtx.fillStyle = '#ffffff';
         outCtx.fillRect(0, 0, targetWidth, targetHeight);
@@ -99,9 +133,9 @@ export async function processImagePipeline(
       outCtx.imageSmoothingEnabled = true;
       outCtx.imageSmoothingQuality = 'high';
 
-      outCtx.drawImage(rotCanvas, 0, 0, targetWidth, targetHeight);
+      outCtx.drawImage(sourceForOutput, 0, 0, targetWidth, targetHeight);
 
-      // 3. Compress & Export format
+      // 4. Compress & Export format
       const quality = Math.max(0.01, Math.min(1.0, compress.quality));
 
       outCanvas.toBlob(
@@ -137,22 +171,25 @@ export async function processImagePipeline(
 }
 
 /**
- * Clean filename generator: e.g. "photo-resized.webp" or "photo-edited.png"
+ * Clean filename generator: e.g. "photo-cropped.webp" or "photo-resized.png"
  */
 export function generateOutputFilename(
   originalName: string,
   toolType: string,
   format: TargetFormat
 ): string {
-  const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+  const safeName = originalName || 'image';
+  const lastDotIndex = safeName.lastIndexOf('.');
+  const baseName = lastDotIndex > 0 ? safeName.substring(0, lastDotIndex) : safeName;
   const ext = mimeToExtension(format);
   const cleanBase = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
   
   let suffix = 'edited';
-  if (toolType === 'resize') suffix = 'resized';
+  if (toolType === 'crop') suffix = 'cropped';
+  else if (toolType === 'resize') suffix = 'resized';
   else if (toolType === 'compress') suffix = 'compressed';
   else if (toolType === 'convert') suffix = 'converted';
   else if (toolType === 'rotate' || toolType === 'flip') suffix = 'rotated';
 
-  return `${cleanBase}-${suffix}.${ext}`;
+  return `${cleanBase || 'image'}-${suffix}.${ext}`;
 }
