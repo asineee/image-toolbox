@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    @apply bg-dark-950 text-gray-100 font-sans antialiased selection:bg-brand-500 selection:text-white min-h-screen flex flex-col;
+  }
+}
+
+/* Custom Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassmorphism card effect */
+.glass-panel {
+  @apply backdrop-blur-xl bg-dark-900/80 border border-gray-800/80 shadow-2xl;
+}
