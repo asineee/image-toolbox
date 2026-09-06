@@ -146,6 +146,16 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
     const newPixelW = Math.max(1, Math.round(cropRect.width * currentW));
     const newPixelH = Math.max(1, Math.round(cropRect.height * currentH));
 
+    const prevRect = imageState.settings.crop.rect;
+    const combinedRect: CropRect = (imageState.settings.crop.active && prevRect)
+      ? {
+          x: prevRect.x + cropRect.x * prevRect.width,
+          y: prevRect.y + cropRect.y * prevRect.height,
+          width: cropRect.width * prevRect.width,
+          height: cropRect.height * prevRect.height,
+        }
+      : cropRect;
+
     onUpdateSettings({
       ...imageState.settings,
       resize: {
@@ -156,7 +166,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
       },
       crop: {
         active: true,
-        rect: cropRect,
+        rect: combinedRect,
       },
     });
 

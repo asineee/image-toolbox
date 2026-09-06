@@ -122,25 +122,28 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
         let newW = initial.width;
         let newH = initial.height;
 
+        const right = initial.x + initial.width;
+        const bottom = initial.y + initial.height;
+
         if (activeHandle.includes('w')) {
-          const maxDeltaX = initial.width - MIN_SIZE;
-          const clampedDeltaX = Math.min(initial.x, Math.max(-maxDeltaX, deltaX));
-          newX = initial.x + clampedDeltaX;
-          newW = initial.width - clampedDeltaX;
+          const maxNewX = right - MIN_SIZE;
+          newX = Math.max(0, Math.min(maxNewX, initial.x + deltaX));
+          newW = right - newX;
         }
         if (activeHandle.includes('e')) {
-          const maxW = 1 - initial.x;
-          newW = Math.max(MIN_SIZE, Math.min(maxW, initial.width + deltaX));
+          const newRight = Math.max(initial.x + MIN_SIZE, Math.min(1, right + deltaX));
+          newX = initial.x;
+          newW = newRight - initial.x;
         }
         if (activeHandle.includes('n')) {
-          const maxDeltaY = initial.height - MIN_SIZE;
-          const clampedDeltaY = Math.min(initial.y, Math.max(-maxDeltaY, deltaY));
-          newY = initial.y + clampedDeltaY;
-          newH = initial.height - clampedDeltaY;
+          const maxNewY = bottom - MIN_SIZE;
+          newY = Math.max(0, Math.min(maxNewY, initial.y + deltaY));
+          newH = bottom - newY;
         }
         if (activeHandle.includes('s')) {
-          const maxH = 1 - initial.y;
-          newH = Math.max(MIN_SIZE, Math.min(maxH, initial.height + deltaY));
+          const newBottom = Math.max(initial.y + MIN_SIZE, Math.min(1, bottom + deltaY));
+          newY = initial.y;
+          newH = newBottom - initial.y;
         }
 
         x = Math.max(0, Math.min(1 - MIN_SIZE, newX));
