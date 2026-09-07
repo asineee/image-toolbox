@@ -190,6 +190,7 @@ export function generateOutputFilename(
   else if (toolType === 'compress') suffix = 'compressed';
   else if (toolType === 'convert') suffix = 'converted';
   else if (toolType === 'rotate' || toolType === 'flip') suffix = 'rotated';
+  else if (toolType === 'clean') suffix = 'cleaned';
 
   return `${cleanBase || 'image'}-${suffix}.${ext}`;
 }

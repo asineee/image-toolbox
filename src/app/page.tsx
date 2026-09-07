@@ -40,6 +40,16 @@ export default function HomePage() {
         active: false,
         rect: null,
       },
+      clean: {
+        active: false,
+        isCleaned: false,
+      },
+      batch: {
+        operation: 'resize',
+        resize: { width: 1920, height: 1080, maintainAspectRatio: true, aspectRatio: 16 / 9 },
+        compress: { quality: 0.8 },
+        convert: { format: 'image/jpeg' },
+      },
     },
     processedResult: null,
     isProcessing: false,
@@ -77,6 +87,16 @@ export default function HomePage() {
         crop: {
           active: false,
           rect: null,
+        },
+        clean: {
+          active: false,
+          isCleaned: false,
+        },
+        batch: {
+          operation: 'resize',
+          resize: { width: img.width, height: img.height, maintainAspectRatio: true, aspectRatio: aspectVal },
+          compress: { quality: 0.8 },
+          convert: { format: formatMime },
         },
       };
 
@@ -146,6 +166,16 @@ export default function HomePage() {
             active: false,
             rect: null,
           },
+          clean: {
+            active: false,
+            isCleaned: false,
+          },
+          batch: {
+            operation: 'resize',
+            resize: { width: img.width, height: img.height, maintainAspectRatio: true, aspectRatio: aspectVal },
+            compress: { quality: 0.8 },
+            convert: { format: 'image/jpeg' },
+          },
         },
       };
     });
@@ -163,6 +193,13 @@ export default function HomePage() {
         convert: { format: 'image/jpeg' },
         rotateFlip: { rotation: 0, flipHorizontal: false, flipVertical: false },
         crop: { active: false, rect: null },
+        clean: { active: false, isCleaned: false },
+        batch: {
+          operation: 'resize',
+          resize: { width: 0, height: 0, maintainAspectRatio: true, aspectRatio: 1 },
+          compress: { quality: 0.8 },
+          convert: { format: 'image/jpeg' },
+        },
       },
       processedResult: null,
       isProcessing: false,
@@ -170,7 +207,16 @@ export default function HomePage() {
     });
   }, []);
 
+  const handleOpenBatchMode = useCallback(() => {
+    setImageState((prev) => ({
+      ...prev,
+      activeTool: 'batch',
+    }));
+  }, []);
+
   const hasActiveImage = !!imageState.originalImage && !!imageState.metadata;
+  const isBatchMode = imageState.activeTool === 'batch';
+  const showWorkspace = hasActiveImage || isBatchMode;
 
   return (
     <div className="min-h-screen flex flex-col bg-dark-950 text-gray-100">
@@ -180,11 +226,12 @@ export default function HomePage() {
         hasImage={hasActiveImage}
         onReset={handleResetEdits}
         onNewImage={handleNewImage}
+        onOpenBatch={handleOpenBatchMode}
       />
 
       {/* Main Content Area */}
       <main className="flex-1">
-        {hasActiveImage ? (
+        {showWorkspace ? (
           <EditorLayout
             imageState={imageState}
             onUpdateSettings={handleUpdateSettings}
@@ -193,7 +240,10 @@ export default function HomePage() {
           />
         ) : (
           <>
-            <LandingHero onImageSelected={handleImageSelected} />
+            <LandingHero
+              onImageSelected={handleImageSelected}
+              onOpenBatch={handleOpenBatchMode}
+            />
             <PrivacySection />
             <HowItWorksSection />
             <FaqSection />

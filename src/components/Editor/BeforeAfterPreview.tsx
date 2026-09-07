@@ -8,7 +8,7 @@ import { CropOverlay } from './CropOverlay';
 interface BeforeAfterPreviewProps {
   originalUrl: string;
   processedResult: ProcessedImageResult | null;
-  metadata: ImageMetadata;
+  metadata: ImageMetadata | null;
   isProcessing: boolean;
   onDownload: () => void;
   activeTool?: ToolType;
@@ -32,8 +32,31 @@ export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
   // Preserve previous preview or fallback to original URL; never disappear
   const activeSrc = showOriginal || !processedResult ? originalUrl : processedResult.dataUrl;
 
-  const currentW = processedResult ? processedResult.width : metadata.width;
-  const currentH = processedResult ? processedResult.height : metadata.height;
+  const currentW = processedResult ? processedResult.width : (metadata?.width || 0);
+  const currentH = processedResult ? processedResult.height : (metadata?.height || 0);
+
+  if (!metadata || !activeSrc) {
+    return (
+      <div className="flex flex-col h-full bg-dark-900/60 rounded-3xl border border-gray-800/80 overflow-hidden shadow-2xl">
+        <div className="px-5 py-4 bg-dark-800/90 border-b border-gray-800/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-brand-950/80 border border-brand-800/50 flex items-center justify-center text-cyan-400">
+              <Layers className="w-4.5 h-4.5" />
+            </div>
+            <h4 className="text-sm font-bold text-white">Batch Preview Workspace</h4>
+          </div>
+        </div>
+
+        <div className="relative flex-1 min-h-[380px] sm:min-h-[480px] flex items-center justify-center p-6 bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:16px_16px] bg-dark-950 text-center">
+          <div className="space-y-2 text-gray-500">
+            <Layers className="w-10 h-10 mx-auto text-gray-600 mb-2" />
+            <p className="text-sm font-bold text-gray-300">Batch Preview Area</p>
+            <p className="text-xs text-gray-500">Add or click images in the batch queue to view their preview here.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-dark-900/60 rounded-3xl border border-gray-800/80 overflow-hidden shadow-2xl">

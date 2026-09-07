@@ -6,12 +6,13 @@ import { SAMPLE_IMAGES } from '../utils/sampleImages';
 
 interface DropZoneProps {
   onImageSelected: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
   isProcessing?: boolean;
 }
 
 const SUPPORTED_EXT_REGEX = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
 
-export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected }) => {
+export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, onFilesSelected }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,20 +29,27 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected }) => {
     setIsDragOver(false);
   };
 
-  const validateAndSelectFile = (file: File) => {
+  const processSelectedFiles = (fileList: FileList | File[]) => {
     setErrorMessage(null);
-    const isImageMime = file.type && file.type.startsWith('image/');
-    const isImageExt = SUPPORTED_EXT_REGEX.test(file.name);
+    const files = Array.from(fileList).filter((f) => {
+      const isImageMime = f.type && f.type.startsWith('image/');
+      const isImageExt = SUPPORTED_EXT_REGEX.test(f.name);
+      return isImageMime || isImageExt;
+    });
 
-    if (!isImageMime && !isImageExt) {
-      setErrorMessage('Please select a valid image file (JPG, PNG, WebP, GIF, or BMP).');
+    if (files.length === 0) {
+      setErrorMessage('Please select valid image file(s) (JPG, PNG, WebP, GIF, or BMP).');
       return;
     }
-    // Warn if file is over 50MB
-    if (file.size > 50 * 1024 * 1024) {
-      setErrorMessage('File size is over 50MB. Processing large files depends on browser memory.');
+
+    if (files.length > 1 && onFilesSelected) {
+      onFilesSelected(files);
+    } else {
+      if (files[0].size > 50 * 1024 * 1024) {
+        setErrorMessage('File size is over 50MB. Processing large files depends on browser memory.');
+      }
+      onImageSelected(files[0]);
     }
-    onImageSelected(file);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -50,16 +58,13 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected }) => {
     setIsDragOver(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      validateAndSelectFile(file);
+      processSelectedFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      validateAndSelectFile(file);
-      // Reset input value so selecting the exact same file again triggers onChange
+      processSelectedFiles(e.target.files);
       e.target.value = '';
     }
   };
@@ -95,6 +100,7 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected }) => {
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
           onChange={handleFileChange}
           className="hidden"

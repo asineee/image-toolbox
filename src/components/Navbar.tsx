@@ -7,9 +7,10 @@ interface NavbarProps {
   hasImage: boolean;
   onReset?: () => void;
   onNewImage?: () => void;
+  onOpenBatch?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ hasImage, onReset, onNewImage }) => {
+export const Navbar: React.FC<NavbarProps> = ({ hasImage, onReset, onNewImage, onOpenBatch }) => {
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-gray-800/80 px-4 lg:px-8 py-3.5 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -27,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({ hasImage, onReset, onNewImage })
                 IMAGE TOOLBOX
               </span>
               <span className="text-[10px] font-semibold tracking-wider text-brand-400 bg-brand-950/80 border border-brand-800/50 px-2 py-0.5 rounded-full uppercase">
-                v1.0
+                v2.0
               </span>
             </div>
             <p className="text-xs text-gray-400 hidden sm:block">In-Browser Image Studio</p>
@@ -42,6 +43,17 @@ export const Navbar: React.FC<NavbarProps> = ({ hasImage, onReset, onNewImage })
 
         {/* Action Controls */}
         <div className="flex items-center gap-3">
+          {onOpenBatch && (
+            <button
+              onClick={onOpenBatch}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-cyan-500/30 rounded-lg transition-all shadow-sm"
+              title="Open Batch Processing workspace"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Batch Processing</span>
+            </button>
+          )}
+
           {hasImage ? (
             <>
               {onReset && (

@@ -15,9 +15,11 @@ import {
 
 interface LandingHeroProps {
   onImageSelected: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
+  onOpenBatch?: () => void;
 }
 
-export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected }) => {
+export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected, onFilesSelected, onOpenBatch }) => {
   const tools = [
     {
       icon: Maximize2,
@@ -55,6 +57,12 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected }) => 
       desc: 'Inspect dimensions, file size, format & aspect ratio.',
       color: 'from-indigo-500/20 to-brand-500/10 border-indigo-500/30 text-indigo-400',
     },
+    {
+      icon: Zap,
+      name: 'Batch Processing',
+      desc: 'Process multiple images simultaneously.',
+      color: 'from-brand-500/20 to-cyan-500/10 border-brand-500/30 text-cyan-400',
+    },
   ];
 
   return (
@@ -84,7 +92,20 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected }) => 
         </p>
 
         {/* Upload Card */}
-        <DropZone onImageSelected={onImageSelected} />
+        <DropZone onImageSelected={onImageSelected} onFilesSelected={onFilesSelected} />
+
+        {/* Quick Batch Access Action */}
+        {onOpenBatch && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={onOpenBatch}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-800/80 hover:bg-dark-800 border border-cyan-500/30 text-xs font-bold text-cyan-300 hover:text-white transition-all shadow-sm"
+            >
+              <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Or process multiple images together with Batch Processing →</span>
+            </button>
+          </div>
+        )}
 
         {/* Tools Feature Grid */}
         <div className="mt-24 text-left">
