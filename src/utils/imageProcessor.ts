@@ -1,5 +1,6 @@
 import { ProcessingSettings, ProcessedImageResult, TargetFormat } from '../types/image';
 import { formatBytes, mimeToExtension } from './formatters';
+import UPNG from 'upng-js';
 
 const SUPPORTED_EXT_REGEX = /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
 
@@ -23,6 +24,7 @@ export function loadImageFromFile(file: File): Promise<HTMLImageElement> {
       if (img.width === 0 || img.height === 0) {
         return reject(new Error('Image has invalid dimensions or failed to decode.'));
       }
+      (img as any)._originalFile = file;
       resolve(img);
     };
 
@@ -135,23 +137,88 @@ export async function processImagePipeline(
 
       outCtx.drawImage(sourceForOutput, 0, 0, targetWidth, targetHeight);
 
-      // 4. Compress & Export format
-      const quality = Math.max(0.01, Math.min(1.0, compress.quality));
+      // Helper to export canvas to Blob asynchronously
+      const exportCanvasBlob = (
+        canvas: HTMLCanvasElement,
+        mimeType: string,
+        q: number
+      ): Promise<Blob | null> => {
+        return new Promise((res) => {
+          canvas.toBlob((b) => res(b), mimeType, q);
+        });
+      };
 
-      outCanvas.toBlob(
-        (blob) => {
-          if (!blob) {
+      // 4. Compress & Export format
+      const initialQuality = Math.max(0.01, Math.min(1.0, compress.quality));
+
+      (async () => {
+        try {
+          let initialBlob: Blob | null = null;
+
+          if (convert.format === 'image/png') {
+            // Client-side PNG compression using UPNG color quantization
+            const imageData = outCtx.getImageData(0, 0, targetWidth, targetHeight);
+            const cnum = initialQuality >= 1.0 ? 0 : Math.max(2, Math.min(256, Math.round(initialQuality * 256)));
+            const pngArrayBuffer = UPNG.encode([imageData.data.buffer], targetWidth, targetHeight, cnum);
+            initialBlob = new Blob([pngArrayBuffer], { type: 'image/png' });
+          } else {
+            initialBlob = await exportCanvasBlob(outCanvas, convert.format, initialQuality);
+          }
+
+          if (!initialBlob) {
             return reject(new Error('Failed to generate image blob in browser.'));
           }
 
-          const dataUrl = URL.createObjectURL(blob);
-          const newSize = blob.size;
+          let finalBlob: Blob = initialBlob;
+
+          // If exported blob is larger than original, try lower quality / more aggressive quantization
+          if (originalSizeBytes > 0 && finalBlob.size > originalSizeBytes) {
+            if (convert.format === 'image/png') {
+              const imageData = outCtx.getImageData(0, 0, targetWidth, targetHeight);
+              let currentCnum = initialQuality >= 1.0 ? 256 : Math.max(2, Math.min(256, Math.round(initialQuality * 256)));
+              if (currentCnum === 0) currentCnum = 256;
+
+              while (currentCnum > 2 && finalBlob.size > originalSizeBytes) {
+                currentCnum = Math.max(2, Math.floor(currentCnum * 0.6));
+                const nextArrayBuffer = UPNG.encode([imageData.data.buffer], targetWidth, targetHeight, currentCnum);
+                const nextBlob = new Blob([nextArrayBuffer], { type: 'image/png' });
+                if (nextBlob.size < finalBlob.size) {
+                  finalBlob = nextBlob;
+                }
+                if (finalBlob.size <= originalSizeBytes) {
+                  break;
+                }
+              }
+            } else if (convert.format === 'image/jpeg' || convert.format === 'image/webp') {
+              let currentQuality = initialQuality;
+              while (currentQuality > 0.01 && finalBlob.size > originalSizeBytes) {
+                currentQuality = Math.max(0.01, Number((currentQuality - 0.05).toFixed(2)));
+                const nextBlob = await exportCanvasBlob(outCanvas, convert.format, currentQuality);
+                if (nextBlob) {
+                  if (nextBlob.size < finalBlob.size) {
+                    finalBlob = nextBlob;
+                  }
+                  if (finalBlob.size <= originalSizeBytes) {
+                    break;
+                  }
+                }
+              }
+            }
+
+            // If no lower quality produces a smaller file, return the original file/blob
+            if (finalBlob.size > originalSizeBytes && (sourceImg as any)._originalFile) {
+              finalBlob = (sourceImg as any)._originalFile;
+            }
+          }
+
+          const dataUrl = URL.createObjectURL(finalBlob);
+          const newSize = finalBlob.size;
           const reduction = originalSizeBytes > 0
             ? Math.round(((originalSizeBytes - newSize) / originalSizeBytes) * 100)
             : 0;
 
           resolve({
-            blob,
+            blob: finalBlob,
             dataUrl,
             fileSizeBytes: newSize,
             formattedSize: formatBytes(newSize),
@@ -160,10 +227,10 @@ export async function processImagePipeline(
             format: convert.format,
             reductionPercentage: reduction,
           });
-        },
-        convert.format,
-        quality
-      );
+        } catch (err: any) {
+          reject(err instanceof Error ? err : new Error('Failed to compress image.'));
+        }
+      })();
     } catch (err: any) {
       reject(new Error(err?.message || 'An error occurred during local image processing.'));
     }

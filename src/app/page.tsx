@@ -13,6 +13,7 @@ import { loadImageFromFile } from '../utils/imageProcessor';
 import { formatBytes, calculateAspectRatioStr, extensionToMime } from '../utils/formatters';
 
 export default function HomePage() {
+  const [initialBatchFiles, setInitialBatchFiles] = useState<File[]>([]);
   const [imageState, setImageState] = useState<ImageState>({
     originalFile: null,
     originalImage: null,
@@ -128,6 +129,18 @@ export default function HomePage() {
     }
   }, []);
 
+  const handleFilesSelected = useCallback((files: File[]) => {
+    if (files.length === 1) {
+      handleImageSelected(files[0]);
+    } else if (files.length >= 2) {
+      setInitialBatchFiles(files);
+      setImageState((prev) => ({
+        ...prev,
+        activeTool: 'batch',
+      }));
+    }
+  }, [handleImageSelected]);
+
   const handleUpdateSettings = useCallback((newSettings: ProcessingSettings) => {
     setImageState((prev) => ({ ...prev, settings: newSettings }));
   }, []);
@@ -182,6 +195,7 @@ export default function HomePage() {
   }, []);
 
   const handleNewImage = useCallback(() => {
+    setInitialBatchFiles([]);
     setImageState({
       originalFile: null,
       originalImage: null,
@@ -237,11 +251,13 @@ export default function HomePage() {
             onUpdateSettings={handleUpdateSettings}
             onUpdateState={handleUpdateState}
             onResetEdits={handleResetEdits}
+            initialBatchFiles={initialBatchFiles}
           />
         ) : (
           <>
             <LandingHero
               onImageSelected={handleImageSelected}
+              onFilesSelected={handleFilesSelected}
               onOpenBatch={handleOpenBatchMode}
             />
             <PrivacySection />
