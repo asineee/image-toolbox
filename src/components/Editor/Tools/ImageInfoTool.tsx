@@ -3,6 +3,7 @@
 import React from 'react';
 import { ImageMetadata } from '../../../types/image';
 import { ShieldCheck, HardDrive, FileText, Maximize2, FileCheck, Layers } from 'lucide-react';
+// Icons imported above are used per-row in infoRows for a consistent, restrained data table.
 
 interface ImageInfoToolProps {
   metadata: ImageMetadata;
@@ -45,24 +46,22 @@ export const ImageInfoTool: React.FC<ImageInfoToolProps> = ({ metadata }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white mb-1">Image Metadata</h3>
-        <p className="text-xs text-gray-400">Inspected properties read locally from your browser image file.</p>
+        <h3 className="text-base font-semibold text-paper-100 mb-1">Image info</h3>
+        <p className="text-xs text-paper-500">Properties read locally from the file.</p>
       </div>
 
       {/* Metadata Table Card */}
-      <div className="rounded-2xl bg-dark-900/90 border border-gray-800 divide-y divide-gray-800/80 overflow-hidden">
+      <div className="rounded-lg bg-ink-950 border border-line-800 divide-y divide-line-800 glass-shine">
         {infoRows.map((row) => {
           const IconComp = row.icon;
           return (
-            <div key={row.label} className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-dark-800 border border-gray-700/60 flex items-center justify-center text-cyan-400">
-                  <IconComp className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-semibold text-gray-300">{row.label}</span>
+            <div key={row.label} className="p-3.5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <IconComp className="w-3.5 h-3.5 text-paper-500" strokeWidth={1.75} />
+                <span className="text-xs font-medium text-paper-400">{row.label}</span>
               </div>
-              <span className={`text-xs text-white text-right truncate max-w-[200px] sm:max-w-[260px] ${
-                row.mono ? 'font-mono font-medium' : ''
+              <span className={`text-xs text-paper-100 text-right truncate max-w-[200px] sm:max-w-[260px] ${
+                row.mono ? 'font-mono' : ''
               }`}>
                 {row.value}
               </span>
@@ -72,12 +71,12 @@ export const ImageInfoTool: React.FC<ImageInfoToolProps> = ({ metadata }) => {
       </div>
 
       {/* Local Metadata Guarantee Card */}
-      <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start gap-3">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+      <div className="p-3.5 rounded-lg bg-accent/5 border border-accent/20 text-xs flex items-start gap-2.5">
+        <ShieldCheck className="w-4 h-4 text-accent shrink-0 mt-0.5" strokeWidth={1.75} />
         <div>
-          <p className="font-bold text-white mb-0.5">Local Metadata Only</p>
-          <p className="text-emerald-400/90 leading-relaxed">
-            All image properties are extracted locally inside your web browser. No metadata or file details leave your device.
+          <p className="font-medium text-paper-100 mb-0.5">Local only</p>
+          <p className="text-paper-400 leading-relaxed">
+            All properties are read inside your browser. Nothing leaves your device.
           </p>
         </div>
       </div>

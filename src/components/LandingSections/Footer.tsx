@@ -1,34 +1,27 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-dark-950 border-t border-gray-800/80 py-12 px-4 sm:px-6 lg:px-8 text-xs text-gray-400">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-        
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-brand-600/20 border border-brand-500/40 flex items-center justify-center text-cyan-400">
-            <ImageIcon className="w-4 h-4" />
+    <footer className="border-t border-line-800 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5 text-xs text-paper-500">
+
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-violet-500 via-fuchsia-500 to-blue-500 flex items-center justify-center">
+            <span className="text-white font-black text-[10px] tracking-tighter">IT</span>
           </div>
-          <div>
-            <span className="font-extrabold text-white text-sm tracking-tight">IMAGE TOOLBOX</span>
-            <p className="text-[11px] text-gray-400">In-Browser Private Image Studio</p>
-          </div>
+          <span className="font-medium text-paper-300">Image Toolbox</span>
         </div>
 
-        {/* Center Privacy Note */}
-        <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium">
-          <ShieldCheck className="w-4 h-4" />
-          <span>All image processing is performed locally in your browser.</span>
+        <div className="flex items-center gap-1.5 text-paper-500">
+          <ShieldCheck className="w-3.5 h-3.5 text-accent-soft" />
+          <span>All processing happens locally in your browser</span>
         </div>
 
-        {/* Copyright */}
-        <div className="text-gray-400 text-center md:text-right">
-          <p>© {new Date().getFullYear()} Image Toolbox. All rights reserved.</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Built with Next.js 14, React 18 & TypeScript.</p>
+        <div className="text-paper-500">
+          © {new Date().getFullYear()} Image Toolbox
         </div>
 
       </div>

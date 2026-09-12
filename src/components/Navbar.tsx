@@ -1,89 +1,127 @@
 'use client';
 
-import React from 'react';
-import { ShieldCheck, Image as ImageIcon, RotateCcw, Sparkles } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Layers, RotateCcw, Undo2, Redo2, Plus } from 'lucide-react';
 
 interface NavbarProps {
   hasImage: boolean;
   onReset?: () => void;
   onNewImage?: () => void;
   onOpenBatch?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ hasImage, onReset, onNewImage, onOpenBatch }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  hasImage,
+  onReset,
+  onNewImage,
+  onOpenBatch,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
+}) => {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-gray-800/80 px-4 lg:px-8 py-3.5 transition-all">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={onNewImage}>
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-cyan-400 p-[1px] shadow-lg shadow-brand-500/20 group-hover:scale-105 transition-transform duration-300">
-            <div className="w-full h-full bg-dark-900 rounded-[11px] flex items-center justify-center">
-              <ImageIcon className="w-5 h-5 text-cyan-400 group-hover:rotate-6 transition-transform" />
-            </div>
+    <header
+      className={`sticky top-0 z-50 px-4 lg:px-8 border-b transition-all duration-300 glass-shine ${
+        scrolled
+          ? 'py-2.5 bg-black/80 backdrop-blur-md border-line-800'
+          : 'py-4 bg-black/40 backdrop-blur-sm border-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+
+        {/* Brand */}
+        <button
+          onClick={onNewImage}
+          className="flex items-center gap-2.5 group shrink-0"
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-blue-500 flex items-center justify-center transition-transform group-hover:scale-105 shadow-glow-sm">
+            <span className="text-white font-black text-sm tracking-tighter">IT</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-gray-400">
-                IMAGE TOOLBOX
-              </span>
-              <span className="text-[10px] font-semibold tracking-wider text-brand-400 bg-brand-950/80 border border-brand-800/50 px-2 py-0.5 rounded-full uppercase">
-                v2.0
-              </span>
-            </div>
-            <p className="text-xs text-gray-400 hidden sm:block">In-Browser Image Studio</p>
+          <div className="hidden sm:block leading-tight">
+            <div className="font-semibold text-[15px] text-paper-100 tracking-tight">Image Toolbox</div>
           </div>
-        </div>
+        </button>
 
         {/* Center Privacy Indicator */}
-        <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium shadow-sm">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 animate-pulse" />
-          <span>Private by design • Your images stay on your device</span>
+        <div className="hidden md:flex items-center gap-2 text-xs text-paper-400 font-medium">
+          <ShieldCheck className="w-3.5 h-3.5 text-accent" strokeWidth={2} />
+          <span>Processed on your device — nothing is uploaded</span>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-3">
-          {onOpenBatch && (
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenBatch && !hasImage && (
             <button
               onClick={onOpenBatch}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-cyan-500/30 rounded-lg transition-all shadow-sm"
-              title="Open Batch Processing workspace"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-paper-300 hover:text-paper-100 border border-line-800 hover:border-ink-500 rounded-md transition-colors glass-shine"
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Batch Processing</span>
+              <Layers className="w-3.5 h-3.5" />
+              <span>Batch</span>
             </button>
           )}
 
           {hasImage ? (
             <>
+              <div className="flex items-center gap-0.5 border border-line-800 rounded-md p-0.5 glass-shine">
+                <button
+                  onClick={onUndo}
+                  disabled={!canUndo}
+                  className="p-1.5 rounded text-paper-400 hover:text-paper-100 hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-paper-400 transition-colors"
+                  title="Undo last edit"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={onRedo}
+                  disabled={!canRedo}
+                  className="p-1.5 rounded text-paper-400 hover:text-paper-100 hover:bg-ink-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-paper-400 transition-colors"
+                  title="Redo edit"
+                >
+                  <Redo2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {onReset && (
                 <button
                   onClick={onReset}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white bg-dark-800 hover:bg-dark-700 border border-gray-700/60 rounded-lg transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-paper-300 hover:text-paper-100 border border-line-800 hover:border-ink-500 rounded-md transition-colors glass-shine"
                   title="Reset edits to original image"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Reset Edits</span>
+                  <span>Reset</span>
                 </button>
               )}
 
               {onNewImage && (
                 <button
                   onClick={onNewImage}
-                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 rounded-lg shadow-md shadow-brand-500/20 hover:shadow-brand-500/30 transition-all active:scale-[0.98]"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-md transition-all shadow-glow-sm hover:shadow-glow glass-shine"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
-                  <span>Choose Another Image</span>
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  <span>New Image</span>
                 </button>
               )}
             </>
           ) : (
             <a
               href="#privacy-section"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-paper-400 hover:text-paper-100 transition-colors"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400 md:hidden" />
-              <span>How Privacy Works</span>
+              <span>Privacy</span>
             </a>
           )}
         </div>

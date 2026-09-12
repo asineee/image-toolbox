@@ -11,8 +11,10 @@ import { Footer } from '../components/LandingSections/Footer';
 import { ImageState, ProcessingSettings, TargetFormat } from '../types/image';
 import { loadImageFromFile } from '../utils/imageProcessor';
 import { formatBytes, calculateAspectRatioStr, extensionToMime } from '../utils/formatters';
+import { useEditorHistory } from '../hooks/useEditorHistory';
 
 export default function HomePage() {
+  const history = useEditorHistory({ maxHistoryLength: 30 });
   const [initialBatchFiles, setInitialBatchFiles] = useState<File[]>([]);
   const [imageState, setImageState] = useState<ImageState>({
     originalFile: null,
@@ -120,6 +122,7 @@ export default function HomePage() {
         isProcessing: false,
         error: null,
       });
+      history.clearHistory();
     } catch (err: any) {
       setImageState((prev) => ({
         ...prev,
@@ -127,7 +130,7 @@ export default function HomePage() {
         error: err?.message || 'Could not load image. Please select a valid photo.',
       }));
     }
-  }, []);
+  }, [history]);
 
   const handleFilesSelected = useCallback((files: File[]) => {
     if (files.length === 1) {
@@ -142,14 +145,16 @@ export default function HomePage() {
   }, [handleImageSelected]);
 
   const handleUpdateSettings = useCallback((newSettings: ProcessingSettings) => {
+    history.pushState(imageState.settings, imageState.activeTool);
     setImageState((prev) => ({ ...prev, settings: newSettings }));
-  }, []);
+  }, [history, imageState.settings, imageState.activeTool]);
 
   const handleUpdateState = useCallback((partial: Partial<ImageState>) => {
     setImageState((prev) => ({ ...prev, ...partial }));
   }, []);
 
   const handleResetEdits = useCallback(() => {
+    history.pushState(imageState.settings, imageState.activeTool);
     setImageState((prev) => {
       if (!prev.originalImage || !prev.metadata) return prev;
       const img = prev.originalImage;
@@ -192,9 +197,10 @@ export default function HomePage() {
         },
       };
     });
-  }, []);
+  }, [history, imageState.settings, imageState.activeTool]);
 
   const handleNewImage = useCallback(() => {
+    history.clearHistory();
     setInitialBatchFiles([]);
     setImageState({
       originalFile: null,
@@ -228,12 +234,34 @@ export default function HomePage() {
     }));
   }, []);
 
+  const handleUndo = useCallback(() => {
+    const restoredEntry = history.undo(imageState.settings, imageState.activeTool);
+    if (restoredEntry) {
+      setImageState((prev) => ({
+        ...prev,
+        settings: restoredEntry.settings,
+        activeTool: restoredEntry.activeTool || prev.activeTool,
+      }));
+    }
+  }, [history, imageState.settings, imageState.activeTool]);
+
+  const handleRedo = useCallback(() => {
+    const restoredEntry = history.redo(imageState.settings, imageState.activeTool);
+    if (restoredEntry) {
+      setImageState((prev) => ({
+        ...prev,
+        settings: restoredEntry.settings,
+        activeTool: restoredEntry.activeTool || prev.activeTool,
+      }));
+    }
+  }, [history, imageState.settings, imageState.activeTool]);
+
   const hasActiveImage = !!imageState.originalImage && !!imageState.metadata;
   const isBatchMode = imageState.activeTool === 'batch';
   const showWorkspace = hasActiveImage || isBatchMode;
 
   return (
-    <div className="min-h-screen flex flex-col bg-dark-950 text-gray-100">
+    <div className="min-h-screen flex flex-col">
       
       {/* Global Navbar */}
       <Navbar
@@ -241,6 +269,10 @@ export default function HomePage() {
         onReset={handleResetEdits}
         onNewImage={handleNewImage}
         onOpenBatch={handleOpenBatchMode}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
       />
 
       {/* Main Content Area */}

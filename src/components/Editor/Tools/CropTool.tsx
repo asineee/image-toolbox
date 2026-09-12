@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { CropSettings, CropRect } from '../../../types/image';
-import { Crop, Check, RefreshCw, X } from 'lucide-react';
+import { Check, RefreshCw, X } from 'lucide-react';
 
 interface CropToolProps {
   cropSettings: CropSettings;
@@ -30,57 +30,55 @@ export const CropTool: React.FC<CropToolProps> = memo(({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white mb-1">Crop Image</h3>
-        <p className="text-xs text-gray-400">Drag to adjust the selection box on the image, then click Apply Crop.</p>
+        <h3 className="text-base font-semibold text-paper-100 mb-1">Crop image</h3>
+        <p className="text-xs text-paper-500">Drag the selection box on the image, then apply.</p>
       </div>
 
-      {/* Selected Crop Dimensions Readout */}
-      <div className="p-4 rounded-2xl bg-dark-900/90 border border-gray-800 space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">Target Crop Size</span>
-          <span className="text-cyan-400 font-mono font-bold">{cropW} × {cropH} px</span>
+      <div className="rounded-lg bg-ink-950 border border-line-800 divide-y divide-line-800 glass-shine">
+        <div className="flex items-center justify-between text-xs p-3.5">
+          <span className="text-paper-400">Target size</span>
+          <span className="text-paper-100 font-mono font-medium">{cropW} × {cropH} px</span>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/80">
-          <span className="text-gray-400 font-medium">Position Offset</span>
-          <span className="text-gray-200 font-mono">X: {cropX}px, Y: {cropY}px</span>
+        <div className="flex items-center justify-between text-xs p-3.5">
+          <span className="text-paper-400">Position</span>
+          <span className="text-paper-300 font-mono">X: {cropX}px, Y: {cropY}px</span>
         </div>
 
         {cropSettings.active && (
-          <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/80">
-            <span className="text-gray-400 font-medium">Crop Status</span>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-              Crop Applied
+          <div className="flex items-center justify-between text-xs p-3.5">
+            <span className="text-paper-400">Status</span>
+            <span className="px-2 py-0.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-[11px] font-medium">
+              Crop applied
             </span>
           </div>
         )}
       </div>
 
-      {/* Primary Action Buttons */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <button
           onClick={onApplyCrop}
-          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 via-brand-500 to-cyan-500 hover:from-brand-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+          className="w-full py-2.5 px-4 rounded-md bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-glow-sm hover:shadow-glow glass-shine"
         >
-          <Check className="w-4 h-4" />
-          <span>Apply Crop</span>
+          <Check className="w-4 h-4" strokeWidth={2.5} />
+          <span>Apply crop</span>
         </button>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <button
             onClick={onResetCropRect}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-medium text-gray-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-ink-800 hover:bg-ink-700 border border-line-800 text-xs font-medium text-paper-300 hover:text-paper-100 transition-colors glass-shine"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reset Selection</span>
+            <span>Reset selection</span>
           </button>
 
           <button
             onClick={onCancelCrop}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-medium text-rose-400 hover:text-rose-300 transition-all active:scale-95"
+            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-md bg-ink-800 hover:bg-ink-700 border border-line-800 text-xs font-medium text-signal-red hover:text-signal-red/80 transition-colors glass-shine"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Cancel Crop</span>
+            <span>Cancel crop</span>
           </button>
         </div>
       </div>

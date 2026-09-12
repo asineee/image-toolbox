@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { StarField } from '../components/StarField';
+import { GlassCursor } from '../components/GlassCursor';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0b0f19',
+  themeColor: '#000000',
 };
 
 export const metadata: Metadata = {
@@ -75,8 +77,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-dark-950 text-gray-100 min-h-screen flex flex-col">
-        {children}
+      <body className="bg-black text-paper-100 min-h-screen flex flex-col">
+        <StarField />
+        <GlassCursor />
+        <div className="relative z-10 flex flex-col min-h-screen">
+          {children}
+        </div>
       </body>
     </html>
   );

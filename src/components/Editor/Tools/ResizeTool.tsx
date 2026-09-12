@@ -163,19 +163,19 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white mb-1">Resize Dimensions</h3>
-        <p className="text-xs text-gray-400">Set output pixel dimensions or select a percentage preset scale.</p>
+        <h3 className="text-base font-semibold text-paper-100 mb-1">Resize dimensions</h3>
+        <p className="text-xs text-paper-500">Set exact pixel dimensions or pick a percentage scale.</p>
       </div>
 
       {/* Original vs Target Badge */}
-      <div className="p-3.5 rounded-xl bg-dark-900/80 border border-gray-800 flex items-center justify-between text-xs">
+      <div className="p-3.5 rounded-lg bg-ink-950 border border-line-800 flex items-center justify-between text-xs glass-shine">
         <div>
-          <span className="text-gray-400 block font-medium">Original Size</span>
-          <span className="text-gray-200 font-mono font-semibold">{originalWidth} × {originalHeight} px</span>
+          <span className="text-paper-500 block">Original size</span>
+          <span className="text-paper-100 font-mono font-medium">{originalWidth} × {originalHeight} px</span>
         </div>
         <button
           onClick={resetOriginal}
-          className="flex items-center gap-1 text-brand-400 hover:text-brand-300 font-medium transition-colors"
+          className="flex items-center gap-1 text-paper-400 hover:text-paper-100 font-medium transition-colors"
           title="Reset to original dimensions"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -184,9 +184,9 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
       </div>
 
       {/* Width & Height Inputs */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-gray-300 mb-1.5">Width (px)</label>
+          <label className="block text-xs font-medium text-paper-400 mb-1.5">Width (px)</label>
           <input
             type="number"
             min="1"
@@ -194,12 +194,12 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
             value={widthInput}
             onChange={handleWidthChange}
             onBlur={handleWidthBlur}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-gray-700 text-white font-mono text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all"
+            className="w-full px-3.5 py-2.5 rounded-md bg-ink-950 border border-line-800 text-paper-100 font-mono text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-300 mb-1.5">Height (px)</label>
+          <label className="block text-xs font-medium text-paper-400 mb-1.5">Height (px)</label>
           <input
             type="number"
             min="1"
@@ -207,45 +207,47 @@ export const ResizeTool: React.FC<ResizeToolProps> = memo(({
             value={heightInput}
             onChange={handleHeightChange}
             onBlur={handleHeightBlur}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-dark-900 border border-gray-700 text-white font-mono text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none transition-all"
+            className="w-full px-3.5 py-2.5 rounded-md bg-ink-950 border border-line-800 text-paper-100 font-mono text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors"
           />
         </div>
       </div>
 
       {/* Lock Aspect Ratio Toggle */}
-      <div className="flex items-center justify-between p-3.5 rounded-xl bg-dark-800/60 border border-gray-800">
+      <div className="flex items-center justify-between p-3.5 rounded-lg bg-ink-950 border border-line-800 glass-shine">
         <div className="flex items-center gap-2.5">
           {settings.maintainAspectRatio ? (
-            <Lock className="w-4 h-4 text-cyan-400" />
+            <Lock className="w-4 h-4 text-accent" />
           ) : (
-            <Unlock className="w-4 h-4 text-gray-400" />
+            <Unlock className="w-4 h-4 text-paper-500" />
           )}
-          <span className="text-xs font-medium text-gray-200">Maintain Aspect Ratio</span>
+          <span className="text-xs font-medium text-paper-300">Maintain aspect ratio</span>
         </div>
         <button
           onClick={toggleAspectRatio}
-          className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-            settings.maintainAspectRatio ? 'bg-brand-600' : 'bg-gray-700'
+          className={`w-10 h-5.5 rounded-full transition-colors relative p-0.5 ${
+            settings.maintainAspectRatio ? 'bg-accent' : 'bg-ink-700'
           }`}
+          style={{ width: '2.5rem', height: '1.375rem' }}
           aria-label="Toggle Maintain Aspect Ratio"
         >
           <div
-            className={`w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${
-              settings.maintainAspectRatio ? 'translate-x-5' : 'translate-x-0'
+            className={`w-4.5 h-4.5 rounded-full bg-ink-950 transform transition-transform ${
+              settings.maintainAspectRatio ? 'translate-x-[1.125rem]' : 'translate-x-0'
             }`}
+            style={{ width: '1.125rem', height: '1.125rem' }}
           />
         </button>
       </div>
 
       {/* Scale Presets */}
       <div>
-        <span className="block text-xs font-semibold text-gray-400 mb-2">Preset Scaling</span>
+        <span className="block text-xs font-medium text-paper-500 mb-2">Preset scaling</span>
         <div className="grid grid-cols-4 gap-2">
           {[25, 50, 75, 200].map((preset) => (
             <button
               key={preset}
               onClick={() => applyScalePreset(preset)}
-              className="py-2 px-3 rounded-lg bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-mono font-medium text-gray-300 hover:text-white transition-all active:scale-95"
+              className="py-2 px-3 rounded-md bg-ink-950 hover:bg-ink-800 border border-line-800 text-xs font-mono font-medium text-paper-300 hover:text-paper-100 transition-colors glass-shine"
             >
               {preset}%
             </button>

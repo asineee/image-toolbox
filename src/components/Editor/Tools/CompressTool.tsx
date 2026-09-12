@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, ChangeEvent, memo } from 'react';
 import { CompressSettings, ProcessedImageResult } from '../../../types/image';
-import { Sparkles, Sliders, Zap } from 'lucide-react';
+import { Sliders, Zap, Gauge } from 'lucide-react';
 
 interface CompressToolProps {
   originalSizeBytes: number;
@@ -21,9 +21,13 @@ export const CompressTool: React.FC<CompressToolProps> = memo(({
 }) => {
   const [localQuality, setLocalQuality] = useState<number>(settings.quality);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Tracks the live slider value outside React state so the release handler
+  // can commit it immediately without waiting for a re-render.
+  const liveQualityRef = useRef<number>(settings.quality);
 
   useEffect(() => {
     setLocalQuality(settings.quality);
+    liveQualityRef.current = settings.quality;
   }, [settings.quality]);
 
   // Clean up timer on unmount
@@ -37,55 +41,86 @@ export const CompressTool: React.FC<CompressToolProps> = memo(({
 
   const qualityPercentage = Math.round(localQuality * 100);
 
+  // Tier label + color matching the three presets below, so the live badge
+  // gives the same at-a-glance signal as the preset buttons.
+  const qualityTier =
+    qualityPercentage < 65
+      ? { label: 'Highly Compressed', text: 'text-signal-red', bg: 'bg-signal-red/10', border: 'border-signal-red/30' }
+      : qualityPercentage < 90
+      ? { label: 'Balanced', text: 'text-signal-amber', bg: 'bg-signal-amber/10', border: 'border-signal-amber/30' }
+      : { label: 'Best Quality', text: 'text-signal-green', bg: 'bg-signal-green/10', border: 'border-signal-green/30' };
+
+  // Only updates the visible thumb/label while actively dragging — never
+  // triggers processing itself, so intermediate values passed through
+  // mid-drag (e.g. 0 -> 100 -> 50 in one continuous gesture) are never sent
+  // for encoding, only the value the user actually lands on.
   const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10);
     const floatQuality = Math.max(0.01, Math.min(1.0, val / 100));
     setLocalQuality(floatQuality);
+    liveQualityRef.current = floatQuality;
 
+    // Fallback safety net in case a release event is somehow missed (e.g.
+    // pointer captured elsewhere): still commits eventually, but the
+    // pointer/mouse/touch-up handlers below normally win by firing first.
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     debounceTimerRef.current = setTimeout(() => {
-      onChange({ quality: floatQuality });
-    }, 150);
+      onChange({ quality: liveQualityRef.current });
+    }, 400);
+  };
+
+  // Commits immediately when the user releases the slider — this is the
+  // decisive "the user is done adjusting" signal, so there's no need to wait
+  // out a debounce window once we have it. Mirrors the native <input
+  // type="range"> "change" event, which (unlike React's onChange/"input")
+  // only fires on release.
+  const commitOnRelease = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    onChange({ quality: liveQualityRef.current });
   };
 
   const applyPresetQuality = (percent: number) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const floatQuality = percent / 100;
     setLocalQuality(floatQuality);
+    liveQualityRef.current = floatQuality;
     onChange({ quality: floatQuality });
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white mb-1">Image Compression</h3>
-        <p className="text-xs text-gray-400">Adjust compression quality to balance file size and visual fidelity.</p>
+        <h3 className="text-base font-semibold text-paper-100 mb-1">Compression</h3>
+        <p className="text-xs text-paper-500">Balance file size against visual quality.</p>
       </div>
 
       {/* Stats Comparison Card */}
-      <div className="p-4 rounded-2xl bg-dark-900/90 border border-gray-800 space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">Original File Size</span>
-          <span className="text-gray-200 font-mono font-bold">{formattedOriginalSize}</span>
+      <div className="rounded-lg bg-ink-950 border border-line-800 divide-y divide-line-800 glass-shine">
+        <div className="flex items-center justify-between text-xs p-3.5">
+          <span className="text-paper-400">Original size</span>
+          <span className="text-paper-100 font-mono font-medium">{formattedOriginalSize}</span>
         </div>
 
         {processedResult && (
           <>
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-gray-800/80">
-              <span className="text-gray-400 font-medium">Processed Output Size</span>
-              <span className="text-cyan-400 font-mono font-bold">{processedResult.formattedSize}</span>
+            <div className="flex items-center justify-between text-xs p-3.5">
+              <span className="text-paper-400">Output size</span>
+              <span className="text-paper-100 font-mono font-medium">{processedResult.formattedSize}</span>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-gray-800/80">
-              <span className="text-xs text-gray-400 font-medium">Savings</span>
+            <div className="flex items-center justify-between p-3.5">
+              <span className="text-xs text-paper-400">Savings</span>
               {processedResult.reductionPercentage > 0 ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/30 text-accent text-xs font-medium">
                   Saved {processedResult.reductionPercentage}%
                 </span>
               ) : (
-                <span className="text-xs text-gray-400 font-mono">Original quality preserved</span>
+                <span className="text-xs text-paper-500 font-mono">Original quality preserved</span>
               )}
             </div>
           </>
@@ -96,12 +131,17 @@ export const CompressTool: React.FC<CompressToolProps> = memo(({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-brand-400" />
-            <label className="text-xs font-bold text-gray-200">Compression Quality</label>
+            <Sliders className="w-4 h-4 text-paper-400" />
+            <label className="text-xs font-medium text-paper-300">Quality</label>
           </div>
-          <span className="text-sm font-mono font-extrabold text-cyan-400 bg-cyan-950/60 border border-cyan-800/50 px-2.5 py-0.5 rounded-lg">
-            {qualityPercentage}%
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${qualityTier.bg} ${qualityTier.border} ${qualityTier.text}`}>
+              {qualityTier.label}
+            </span>
+            <span className="text-sm font-mono font-semibold text-accent bg-accent/10 border border-accent/30 px-2.5 py-0.5 rounded-md">
+              {qualityPercentage}%
+            </span>
+          </div>
         </div>
 
         <input
@@ -110,39 +150,43 @@ export const CompressTool: React.FC<CompressToolProps> = memo(({
           max="100"
           value={qualityPercentage}
           onChange={handleSliderChange}
-          className="w-full h-2 bg-dark-900 rounded-lg appearance-none cursor-pointer accent-brand-500"
+          onMouseUp={commitOnRelease}
+          onTouchEnd={commitOnRelease}
+          onPointerUp={commitOnRelease}
+          onKeyUp={commitOnRelease}
+          className="w-full h-1.5 bg-ink-700 rounded-full appearance-none cursor-pointer accent-accent"
         />
 
-        <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-          <span>Max Compression (Smaller File)</span>
-          <span>Max Quality (Crisp)</span>
+        <div className="flex justify-between text-[10px] text-paper-500 font-mono">
+          <span>Smaller file</span>
+          <span>Higher quality</span>
         </div>
       </div>
 
       {/* Preset Quality Buttons */}
       <div>
-        <span className="block text-xs font-semibold text-gray-400 mb-2">Quality Presets</span>
+        <span className="block text-xs font-medium text-paper-500 mb-2">Presets</span>
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => applyPresetQuality(50)}
-            className="py-2.5 px-3 rounded-xl bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-medium text-gray-300 hover:text-white transition-all"
+            className="py-2.5 px-2 rounded-md bg-ink-950 hover:bg-ink-800 border border-line-800 hover:border-signal-red/40 text-xs font-medium text-paper-300 hover:text-paper-100 transition-colors glass-shine"
           >
-            <Zap className="w-3.5 h-3.5 mx-auto mb-1 text-amber-400" />
-            <span>High Compression (50%)</span>
+            <Zap className="w-3.5 h-3.5 mx-auto mb-1 text-signal-red" strokeWidth={1.75} />
+            <span>High compression</span>
           </button>
           <button
             onClick={() => applyPresetQuality(80)}
-            className="py-2.5 px-3 rounded-xl bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-medium text-gray-300 hover:text-white transition-all"
+            className="py-2.5 px-2 rounded-md bg-ink-950 hover:bg-ink-800 border border-line-800 hover:border-signal-amber/40 text-xs font-medium text-paper-300 hover:text-paper-100 transition-colors glass-shine"
           >
-            <Sparkles className="w-3.5 h-3.5 mx-auto mb-1 text-cyan-400" />
-            <span>Balanced (80%)</span>
+            <Gauge className="w-3.5 h-3.5 mx-auto mb-1 text-signal-amber" strokeWidth={1.75} />
+            <span>Balanced</span>
           </button>
           <button
             onClick={() => applyPresetQuality(95)}
-            className="py-2.5 px-3 rounded-xl bg-dark-900 hover:bg-dark-700 border border-gray-800 text-xs font-medium text-gray-300 hover:text-white transition-all"
+            className="py-2.5 px-2 rounded-md bg-ink-950 hover:bg-ink-800 border border-line-800 hover:border-signal-green/40 text-xs font-medium text-paper-300 hover:text-paper-100 transition-colors glass-shine"
           >
-            <Sliders className="w-3.5 h-3.5 mx-auto mb-1 text-emerald-400" />
-            <span>Best Quality (95%)</span>
+            <Sliders className="w-3.5 h-3.5 mx-auto mb-1 text-signal-green" strokeWidth={1.75} />
+            <span>Best quality</span>
           </button>
         </div>
       </div>

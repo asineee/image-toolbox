@@ -9,7 +9,23 @@
   }
 
   body {
-    @apply bg-dark-950 text-gray-100 font-sans antialiased selection:bg-brand-500 selection:text-white min-h-screen flex flex-col;
+    @apply bg-black text-paper-100 font-sans antialiased selection:bg-accent selection:text-white min-h-screen flex flex-col;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #26262C;
+    border-radius: 999px;
+    border: 2px solid #000000;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #38383F;
   }
 }
 
@@ -22,7 +38,149 @@
   scrollbar-width: none;
 }
 
-/* Glassmorphism card effect */
-.glass-panel {
-  @apply backdrop-blur-xl bg-dark-900/80 border border-gray-800/80 shadow-2xl;
+/* Gradient heading text — reserved for major headings and hero-level accents */
+.text-gradient {
+  background-image: linear-gradient(90deg, #A78BFA 0%, #F472B6 50%, #60A5FA 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.text-gradient-cool {
+  background-image: linear-gradient(90deg, #818CF8 0%, #A78BFA 50%, #60A5FA 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* === Liquid glass surfaces: full treatment (background tint + blur + border) === */
+.surface,
+.surface-solid {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+.surface {
+  background-color: rgba(9, 9, 11, 0.55);
+}
+.surface-solid {
+  background-color: rgba(9, 9, 11, 0.82);
+}
+
+/* === Cursor-reactive shine: pseudo-layers only, no background/blur/border
+   override — for elements that manage their own background via Tailwind
+   utilities (gradient CTA buttons, the navbar, tabs) so their existing color
+   stays intact while still getting the moving glass reflection === */
+.glass-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Soft top-edge highlight — a fixed, gentle "reflection" line shared by every
+   glass surface, giving the layered glass look asked for. */
+.surface::before,
+.surface-solid::before,
+.glass-shine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 45%);
+  pointer-events: none;
+}
+
+/* Cursor-reactive glow — position driven by --mx/--my, set via JS on
+   mousemove (see GlassCursor.tsx). Sits above the surface's own background
+   but below real content, exactly like a light reflecting across glass.
+   Kept small, soft and dim — a subtle glass reflection, not a spotlight. */
+.surface::after,
+.surface-solid::after,
+.glass-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(120px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.09), transparent 72%);
+  filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.surface:hover::after,
+.surface-solid:hover::after,
+.glass-shine:hover::after {
+  opacity: 1;
+}
+
+/* Scroll-reveal: elements fade/slide up into view once, then stay */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Star field particles */
+@keyframes star-fall {
+  from { transform: translateY(-5vh); }
+  to { transform: translateY(105vh); }
+}
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--star-min-o, 0.3); }
+  50% { opacity: var(--star-max-o, 1); }
+}
+.star-field {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  will-change: transform, opacity;
+}
+.star-fall {
+  animation-name: star-fall, star-twinkle;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+.star-twinkle-only {
+  animation-name: star-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .star-fall,
+  .star-twinkle-only {
+    animation: none !important;
+  }
+  .surface::after,
+  .surface-solid::after,
+  .glass-shine::after {
+    display: none !important;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

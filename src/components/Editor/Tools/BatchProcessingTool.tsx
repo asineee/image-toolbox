@@ -11,19 +11,19 @@ import {
 } from '../../../types/image';
 import { loadImageFromFile, processImagePipeline, generateOutputFilename } from '../../../utils/imageProcessor';
 import { formatBytes } from '../../../utils/formatters';
-import { 
-  Layers, 
-  Upload, 
-  X, 
-  Play, 
-  Trash2, 
-  Download, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
-  Maximize2, 
-  FileArchive, 
-  FileType, 
+import {
+  Layers,
+  Upload,
+  X,
+  Play,
+  Trash2,
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Maximize2,
+  FileArchive,
+  FileType,
   ShieldCheck,
   Archive
 } from 'lucide-react';
@@ -49,6 +49,30 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const processedInitialFilesRef = useRef<Set<File>>(new Set());
+
+  // Local, instantly-updating quality value for smooth slider dragging; the
+  // actual settings commit (which also triggers the single-image preview
+  // pipeline elsewhere in the app, since it shares the same top-level
+  // settings object) only happens on release, or as a debounced fallback —
+  // never per intermediate tick — so dragging doesn't spam reprocessing.
+  const [localBatchQuality, setLocalBatchQuality] = useState<number>(settings.compress.quality);
+  const batchQualityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestBatchSettingsRef = useRef<BatchSettings>(settings);
+  const liveBatchQualityRef = useRef<number>(settings.compress.quality);
+
+  useEffect(() => {
+    setLocalBatchQuality(settings.compress.quality);
+    latestBatchSettingsRef.current = settings;
+    liveBatchQualityRef.current = settings.compress.quality;
+  }, [settings]);
+
+  useEffect(() => {
+    return () => {
+      if (batchQualityDebounceRef.current) {
+        clearTimeout(batchQualityDebounceRef.current);
+      }
+    };
+  }, []);
 
   const itemsRef = useRef<BatchItem[]>(items);
   useEffect(() => {
@@ -365,18 +389,18 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-          <Layers className="w-5 h-5 text-cyan-400" />
-          <span>Batch Processing</span>
+        <h3 className="text-base font-semibold text-paper-100 mb-1 flex items-center gap-2">
+          <Layers className="w-4.5 h-4.5 text-accent" strokeWidth={1.75} />
+          <span>Batch processing</span>
         </h3>
-        <p className="text-xs text-gray-400">
-          Process multiple photos simultaneously. Click any queued image to preview it.
+        <p className="text-xs text-paper-500">
+          Process multiple photos at once. Click a queued image to preview it.
         </p>
       </div>
 
       {/* Operation Selection Tabs */}
-      <div className="space-y-3">
-        <label className="text-xs font-bold text-gray-300 block">Batch Operation</label>
+      <div className="space-y-2.5">
+        <label className="text-xs font-medium text-paper-500 block">Operation</label>
         <div className="grid grid-cols-3 gap-2">
           {(['resize', 'compress', 'convert'] as BatchOperationType[]).map((op) => {
             const isActive = settings.operation === op;
@@ -391,13 +415,13 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
               <button
                 key={op}
                 onClick={() => handleOperationChange(op)}
-                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                className={`flex items-center justify-center gap-2 py-2.5 px-2 rounded-md text-xs font-medium transition-colors border glass-shine ${
                   isActive
-                    ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/20'
-                    : 'bg-dark-900 border-gray-800 text-gray-400 hover:text-white hover:bg-dark-800'
+                    ? 'bg-accent/5 text-paper-100 border-accent'
+                    : 'bg-ink-950 border-line-800 text-paper-400 hover:text-paper-100 hover:bg-ink-800'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-accent' : ''}`} strokeWidth={1.75} />
                 <span>{labelMap[op].title}</span>
               </button>
             );
@@ -406,13 +430,13 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
       </div>
 
       {/* Parameter Settings Card */}
-      <div className="p-4 rounded-2xl bg-dark-900/90 border border-gray-800 space-y-4">
+      <div className="p-4 rounded-lg bg-ink-950 border border-line-800 space-y-4">
         {settings.operation === 'resize' && (
           <div className="space-y-3">
-            <span className="text-xs font-bold text-cyan-400 block">Batch Resize Settings</span>
+            <span className="text-xs font-medium text-paper-400 block">Target dimensions</span>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-gray-400 block mb-1">Target Width (px)</label>
+                <label className="text-[11px] font-medium text-paper-500 block mb-1">Width (px)</label>
                 <input
                   type="number"
                   min="1"
@@ -425,12 +449,12 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                       resize: { ...settings.resize, width: w },
                     });
                   }}
-                  className="w-full bg-dark-800 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-ink-900 border border-line-800 rounded-md px-3 py-2 text-xs font-mono text-paper-100 focus:outline-none focus:border-accent"
                   placeholder="e.g. 1920"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-gray-400 block mb-1">Target Height (px)</label>
+                <label className="text-[11px] font-medium text-paper-500 block mb-1">Height (px)</label>
                 <input
                   type="number"
                   min="1"
@@ -443,7 +467,7 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                       resize: { ...settings.resize, height: h },
                     });
                   }}
-                  className="w-full bg-dark-800 border border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-ink-900 border border-line-800 rounded-md px-3 py-2 text-xs font-mono text-paper-100 focus:outline-none focus:border-accent"
                   placeholder="e.g. 1080"
                 />
               </div>
@@ -454,30 +478,60 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
         {settings.operation === 'compress' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs">
-              <span className="font-bold text-cyan-400">Batch Compression Quality</span>
-              <span className="font-mono text-white font-bold">{Math.round(settings.compress.quality * 100)}%</span>
+              <span className="font-medium text-paper-400">Quality</span>
+              <span className="font-mono text-paper-100 font-medium">{Math.round(localBatchQuality * 100)}%</span>
             </div>
             <input
               type="range"
               min="0.05"
               max="1.0"
               step="0.05"
-              value={settings.compress.quality}
+              value={localBatchQuality}
               onChange={(e) => {
                 const q = parseFloat(e.target.value);
+                setLocalBatchQuality(q);
+                liveBatchQualityRef.current = q;
+
+                // Fallback only — the up/release handlers below normally
+                // commit immediately once the user stops dragging.
+                if (batchQualityDebounceRef.current) {
+                  clearTimeout(batchQualityDebounceRef.current);
+                }
+                batchQualityDebounceRef.current = setTimeout(() => {
+                  onChangeSettings({
+                    ...latestBatchSettingsRef.current,
+                    compress: { quality: liveBatchQualityRef.current },
+                  });
+                }, 400);
+              }}
+              onMouseUp={() => {
+                if (batchQualityDebounceRef.current) {
+                  clearTimeout(batchQualityDebounceRef.current);
+                  batchQualityDebounceRef.current = null;
+                }
                 onChangeSettings({
-                  ...settings,
-                  compress: { quality: q },
+                  ...latestBatchSettingsRef.current,
+                  compress: { quality: liveBatchQualityRef.current },
                 });
               }}
-              className="w-full accent-brand-500 h-2 bg-dark-800 rounded-lg appearance-none cursor-pointer"
+              onTouchEnd={() => {
+                if (batchQualityDebounceRef.current) {
+                  clearTimeout(batchQualityDebounceRef.current);
+                  batchQualityDebounceRef.current = null;
+                }
+                onChangeSettings({
+                  ...latestBatchSettingsRef.current,
+                  compress: { quality: liveBatchQualityRef.current },
+                });
+              }}
+              className="w-full accent-accent h-1.5 bg-ink-700 rounded-full appearance-none cursor-pointer"
             />
           </div>
         )}
 
         {settings.operation === 'convert' && (
           <div className="space-y-2">
-            <label className="text-xs font-bold text-cyan-400 block">Batch Target Format</label>
+            <label className="text-xs font-medium text-paper-400 block">Target format</label>
             <select
               value={settings.convert.format}
               onChange={(e) => {
@@ -487,7 +541,7 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                   convert: { format: fmt },
                 });
               }}
-              className="w-full bg-dark-800 border border-gray-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-500"
+              className="w-full bg-ink-900 border border-line-800 rounded-md px-3 py-2.5 text-xs font-medium text-paper-100 focus:outline-none focus:border-accent"
             >
               <option value="image/jpeg">JPEG (.jpg)</option>
               <option value="image/png">PNG (.png)</option>
@@ -503,10 +557,10 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`p-6 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center space-y-2 ${
+        className={`p-6 rounded-lg border border-dashed transition-colors cursor-pointer text-center space-y-2 glass-shine ${
           isDragOver
-            ? 'border-brand-500 bg-brand-500/10'
-            : 'border-gray-800 hover:border-gray-700 bg-dark-900/50'
+            ? 'border-accent bg-accent/5'
+            : 'border-line-800 hover:border-ink-500 bg-ink-950'
         }`}
       >
         <input
@@ -517,40 +571,40 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
           accept="image/jpeg,image/png,image/webp,image/gif,image/bmp"
           className="hidden"
         />
-        <div className="w-10 h-10 mx-auto rounded-xl bg-dark-800 border border-gray-700 flex items-center justify-center text-cyan-400">
-          <Upload className="w-5 h-5" />
+        <div className="w-9 h-9 mx-auto rounded-md bg-ink-800 border border-line-800 flex items-center justify-center text-paper-400">
+          <Upload className="w-4.5 h-4.5" strokeWidth={1.75} />
         </div>
-        <p className="text-xs font-bold text-white">Drag & drop multiple images here, or click to browse</p>
-        <p className="text-[11px] text-gray-500">Supports JPEG, PNG, WebP, GIF, BMP files</p>
+        <p className="text-xs font-medium text-paper-300">Drag & drop multiple images, or click to browse</p>
+        <p className="text-[11px] text-paper-500">Supports JPEG, PNG, WebP, GIF, BMP</p>
       </div>
 
       {/* Batch Action Bar */}
       {items.length > 0 && (
-        <div className="p-3.5 rounded-2xl bg-dark-900 border border-gray-800 space-y-3">
+        <div className="p-3.5 rounded-lg bg-ink-950 border border-line-800 space-y-3 glass-shine">
           {/* Completion Banner */}
           {isAllComplete && (
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-300">
+            <div className="flex items-center justify-between p-2.5 rounded-md bg-accent/5 border border-accent/30 text-xs font-medium text-paper-100">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Batch Processing Complete ({successCount}/{items.length} images processed)</span>
+                <CheckCircle2 className="w-4 h-4 text-accent shrink-0" strokeWidth={1.75} />
+                <span>Batch complete — {successCount}/{items.length} images processed</span>
               </div>
             </div>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs text-gray-400">
-              <span className="font-bold text-white">{items.length}</span> image(s) in queue
-              {successCount > 0 && <span className="text-emerald-400 ml-2">({successCount} done)</span>}
+            <div className="text-xs text-paper-400">
+              <span className="font-medium text-paper-100">{items.length}</span> image(s) in queue
+              {successCount > 0 && <span className="text-accent ml-2">({successCount} done)</span>}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleClearAll}
                 disabled={isProcessingAll}
-                className="px-3 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-rose-400 text-xs font-bold flex items-center gap-1.5 transition-colors border border-gray-800 disabled:opacity-50"
+                className="px-3 py-2 rounded-md bg-ink-800 hover:bg-ink-700 text-signal-red text-xs font-medium flex items-center gap-1.5 transition-colors border border-line-800 disabled:opacity-50 glass-shine"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear All</span>
+                <span>Clear all</span>
               </button>
 
               {successCount > 0 && (
@@ -558,7 +612,7 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                   <button
                     onClick={handleDownloadZip}
                     disabled={isZipping}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brand-600 via-cyan-600 to-emerald-600 hover:from-brand-500 hover:to-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-brand-600/20 disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-md bg-ink-800 hover:bg-ink-700 border border-line-800 text-paper-100 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50 glass-shine"
                     title="Package all processed images into imagetoolbox-batch.zip"
                   >
                     {isZipping ? (
@@ -566,15 +620,15 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                     ) : (
                       <Archive className="w-3.5 h-3.5" />
                     )}
-                    <span>Download All as ZIP</span>
+                    <span>Download as ZIP</span>
                   </button>
 
                   <button
                     onClick={handleDownloadAll}
-                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20"
+                    className="px-3 py-2 rounded-md bg-ink-800 hover:bg-ink-700 border border-line-800 text-paper-100 text-xs font-medium flex items-center gap-1.5 transition-colors glass-shine"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download All</span>
+                    <span>Download all</span>
                   </button>
                 </>
               )}
@@ -582,17 +636,17 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
               <button
                 onClick={handleProcessAll}
                 disabled={!canProcess || isProcessingAll}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-lg shadow-brand-500/20 disabled:opacity-50"
+                className="px-4 py-2 rounded-md bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-glow-sm hover:shadow-glow disabled:opacity-50 disabled:shadow-none glass-shine"
               >
                 {isProcessingAll ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Processing...</span>
+                    <span>Processing…</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-3.5 h-3.5" />
-                    <span>{isAllComplete ? 'Re-Process All' : 'Process All'}</span>
+                    <Play className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    <span>{isAllComplete ? 'Re-process all' : 'Process all'}</span>
                   </>
                 )}
               </button>
@@ -611,36 +665,37 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
               <div
                 key={item.id}
                 onClick={() => onSelectItem && onSelectItem(item)}
-                className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs cursor-pointer transition-all ${
+                className={`p-3 rounded-lg border flex items-center justify-between gap-3 text-xs cursor-pointer transition-colors glass-shine ${
                   isSelected
-                    ? 'bg-dark-800/90 border-cyan-500/80 shadow-md shadow-cyan-500/10 ring-1 ring-cyan-500/40'
-                    : 'bg-dark-900 border-gray-800/90 hover:border-gray-700 hover:bg-dark-850'
+                    ? 'bg-accent/5 border-accent'
+                    : 'bg-ink-950 border-line-800 hover:border-ink-500'
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Thumbnail indicator */}
-                  <div className="w-10 h-10 rounded-lg bg-dark-950 border border-gray-800 flex items-center justify-center shrink-0 overflow-hidden">
+                  <div className="w-10 h-10 rounded-md bg-ink-900 border border-line-800 flex items-center justify-center shrink-0 overflow-hidden">
                     {item.status === 'error' && !item.imageElement ? (
-                      <AlertCircle className="w-4 h-4 text-rose-400" />
+                      <AlertCircle className="w-4 h-4 text-signal-red" />
                     ) : item.result?.dataUrl || item.previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={item.result?.dataUrl || item.previewUrl}
                         alt={item.filename}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-[10px] font-mono text-gray-500 uppercase">
+                      <span className="text-[10px] font-mono text-paper-500 uppercase">
                         {item.filename.split('.').pop() || 'IMG'}
                       </span>
                     )}
                   </div>
 
                   <div className="min-w-0 space-y-0.5">
-                    <p className={`font-bold truncate max-w-[160px] sm:max-w-[220px] ${isSelected ? 'text-cyan-300' : 'text-white'}`}>
+                    <p className={`font-medium truncate max-w-[160px] sm:max-w-[220px] ${isSelected ? 'text-paper-100' : 'text-paper-200'}`}>
                       {item.filename}
                     </p>
-                    <p className="text-[11px] text-gray-500 font-mono">
-                      {item.width && item.height ? `${item.width}×${item.height} px • ` : ''}
+                    <p className="text-[11px] text-paper-500 font-mono">
+                      {item.width && item.height ? `${item.width}×${item.height}px · ` : ''}
                       {item.result ? item.result.formattedSize : item.formattedSize}
                     </p>
                   </div>
@@ -649,25 +704,25 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                 {/* Status Badge & Actions */}
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {item.status === 'idle' && (
-                    <span className="px-2 py-1 rounded-md bg-dark-800 text-gray-400 text-[10px] font-bold">
+                    <span className="px-2 py-1 rounded-md bg-ink-800 text-paper-400 text-[10px] font-medium">
                       Ready
                     </span>
                   )}
                   {item.status === 'processing' && (
-                    <span className="px-2 py-1 rounded-md bg-brand-500/20 text-brand-300 text-[10px] font-bold flex items-center gap-1">
+                    <span className="px-2 py-1 rounded-md bg-accent/10 text-accent text-[10px] font-medium flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       <span>Processing</span>
                     </span>
                   )}
                   {item.status === 'success' && (
-                    <span className="px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span className="px-2 py-1 rounded-md bg-signal-green/10 text-signal-green text-[10px] font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
                       <span>Done</span>
                     </span>
                   )}
                   {item.status === 'error' && (
-                    <span className="px-2 py-1 rounded-md bg-rose-500/20 text-rose-300 text-[10px] font-bold flex items-center gap-1" title={item.error}>
-                      <AlertCircle className="w-3 h-3 text-rose-400" />
+                    <span className="px-2 py-1 rounded-md bg-signal-red/10 text-signal-red text-[10px] font-medium flex items-center gap-1" title={item.error}>
+                      <AlertCircle className="w-3 h-3" />
                       <span>Failed</span>
                     </span>
                   )}
@@ -675,7 +730,7 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                   {item.status === 'success' && (
                     <button
                       onClick={() => handleDownloadItem(item)}
-                      className="p-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-cyan-400 transition-colors border border-gray-700/60"
+                      className="p-1.5 rounded-md bg-ink-800 hover:bg-ink-700 text-paper-300 hover:text-paper-100 transition-colors border border-line-800"
                       title="Download item"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -685,7 +740,7 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
                   <button
                     onClick={() => handleRemoveItem(item.id)}
                     disabled={isProcessingAll}
-                    className="p-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-gray-400 hover:text-rose-400 transition-colors border border-gray-800 disabled:opacity-50"
+                    className="p-1.5 rounded-md bg-ink-800 hover:bg-ink-700 text-paper-400 hover:text-signal-red transition-colors border border-line-800 disabled:opacity-50"
                     title="Remove item"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -698,9 +753,9 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
       )}
 
       {/* Privacy Guarantee Card */}
-      <div className="p-3.5 rounded-xl bg-dark-900/60 border border-gray-800/80 text-xs text-gray-400 flex items-center gap-2.5">
-        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-        <span>100% Client-Side Privacy: All batch images process locally in your browser.</span>
+      <div className="p-3.5 rounded-lg bg-accent/5 border border-accent/20 text-xs text-paper-400 flex items-center gap-2.5">
+        <ShieldCheck className="w-4 h-4 text-accent shrink-0" strokeWidth={1.75} />
+        <span>All batch images are processed locally in your browser. Nothing is uploaded.</span>
       </div>
     </div>
   );

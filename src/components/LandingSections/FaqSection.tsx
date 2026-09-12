@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, HelpCircle } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { Reveal } from '../Reveal';
 
 export const FaqSection: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
@@ -17,60 +18,53 @@ export const FaqSection: React.FC = () => {
     },
     {
       q: 'Is Image Toolbox free to use?',
-      a: 'Yes! Image Toolbox is 100% free with no hidden paywalls, no watermark additions, and no mandatory account registration.',
+      a: 'Yes. Image Toolbox is free with no hidden paywalls, no watermarks, and no mandatory account registration.',
     },
     {
       q: 'What happens to my images after I close the page?',
-      a: 'Because images are stored only temporarily in your browser session memory, closing the browser tab or refreshing completely wipes any loaded images from memory.',
+      a: 'Because images are stored only temporarily in your browser session memory, closing the tab or refreshing completely clears any loaded images.',
     },
     {
       q: 'Does it work on mobile phones and tablets?',
-      a: 'Yes. Image Toolbox features a modern responsive design optimized for iOS, Android, tablets, and desktop computers.',
+      a: 'Yes. Image Toolbox is fully responsive and optimized for iOS, Android, tablets, and desktop browsers.',
     },
   ];
 
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto border-t border-gray-800/80">
-      <div className="text-center mb-14">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold mb-3">
-          <HelpCircle className="w-3.5 h-3.5" />
-          <span>Frequently Asked Questions</span>
-        </div>
-        <h2 className="text-3xl font-extrabold text-white tracking-tight mb-3">
-          Got questions? We have answers.
+    <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto border-t border-line-800">
+      <Reveal className="mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+          Common <span className="text-gradient">questions</span>
         </h2>
-        <p className="text-sm text-gray-400">Everything you need to know about Image Toolbox.</p>
-      </div>
+        <p className="text-base text-paper-400">Everything you might want to know before you start.</p>
+      </Reveal>
 
-      <div className="space-y-4">
+      <Reveal delayMs={80} className="rounded-2xl overflow-hidden divide-y divide-line-800 surface">
         {faqs.map((faq, idx) => {
           const isOpen = openIndex === idx;
           return (
-            <div
-              key={faq.q}
-              className="rounded-2xl bg-dark-800/60 border border-gray-800/80 overflow-hidden transition-all"
-            >
+            <div key={faq.q}>
               <button
                 onClick={() => setOpenIndex(isOpen ? null : idx)}
-                className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-sm text-white hover:text-cyan-300 transition-colors"
+                className="w-full p-5 text-left flex items-center justify-between gap-4 font-medium text-sm text-paper-100 hover:bg-white/[0.03] transition-colors"
               >
                 <span>{faq.q}</span>
                 <ChevronDown
-                  className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${
-                    isOpen ? 'rotate-180 text-cyan-400' : ''
+                  className={`w-4 h-4 text-accent-soft shrink-0 transition-transform duration-200 ${
+                    isOpen ? 'rotate-180' : ''
                   }`}
                 />
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 text-xs text-gray-300 leading-relaxed border-t border-gray-800/60 pt-3">
+                <div className="px-5 pb-5 text-sm text-paper-400 leading-relaxed">
                   {faq.a}
                 </div>
               )}
             </div>
           );
         })}
-      </div>
+      </Reveal>
     </section>
   );
 };

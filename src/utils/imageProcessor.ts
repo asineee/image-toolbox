@@ -156,11 +156,57 @@ export async function processImagePipeline(
           let initialBlob: Blob | null = null;
 
           if (convert.format === 'image/png') {
-            // Client-side PNG compression using UPNG color quantization
-            const imageData = outCtx.getImageData(0, 0, targetWidth, targetHeight);
-            const cnum = initialQuality >= 1.0 ? 0 : Math.max(2, Math.min(256, Math.round(initialQuality * 256)));
-            const pngArrayBuffer = UPNG.encode([imageData.data.buffer], targetWidth, targetHeight, cnum);
-            initialBlob = new Blob([pngArrayBuffer], { type: 'image/png' });
+            // PNG encoding: the native canvas.toBlob('image/png') encoder is
+            // browser-native (fast, correct RGBA/alpha handling) but cannot
+            // do color quantization. UPNG.encode's quantizer is a pure-JS,
+            // synchronous, single-threaded routine — for large images it can
+            // block the main thread for several seconds, and it was
+            // previously being invoked even when no quantization was
+            // actually wanted (e.g. quality = 100%), which produced no
+            // benefit and cost the most (a full 32-bit re-encode is the most
+            // expensive case for a JS-based encoder).
+            //
+            // Quantization only matters when the user has explicitly asked
+            // for a smaller/lower-quality PNG. So: default to the fast
+            // native encoder, and only fall through to UPNG's quantizer when
+            // quality < 100% — checking transparency (which also disables
+            // quantization, to protect alpha blending from palette
+            // artifacts) only in that case, since it's the only case where
+            // it can change the outcome.
+            if (initialQuality >= 1.0) {
+              initialBlob = await exportCanvasBlob(outCanvas, 'image/png', 1.0);
+            } else {
+              const imageData = outCtx.getImageData(0, 0, targetWidth, targetHeight);
+
+              let hasTransparency = false;
+              const data = imageData.data;
+              for (let i = 3; i < data.length; i += 4) {
+                if (data[i] !== 255) {
+                  hasTransparency = true;
+                  break;
+                }
+              }
+
+              if (hasTransparency) {
+                // Quantizing RGB-under-alpha can misrepresent blended colors,
+                // and transparent PNGs (logos, cutouts, UI assets) are the
+                // case users most need pixel-perfect — always keep these
+                // lossless, via the fast native encoder.
+                initialBlob = await exportCanvasBlob(outCanvas, 'image/png', 1.0);
+              } else {
+                // User explicitly wants a smaller/quantized PNG, and the
+                // image is fully opaque — safe to quantize. Yield to the
+                // browser first so the "Updating..." state actually paints
+                // before the (still synchronous, third-party) quantizer
+                // blocks the main thread.
+                await new Promise((r) => setTimeout(r, 0));
+
+                const pixelData = new Uint8ClampedArray(data);
+                const cnum = Math.max(2, Math.min(256, Math.round(initialQuality * 256)));
+                const pngArrayBuffer = UPNG.encode([pixelData.buffer], targetWidth, targetHeight, cnum);
+                initialBlob = new Blob([pngArrayBuffer], { type: 'image/png' });
+              }
+            }
           } else {
             initialBlob = await exportCanvasBlob(outCanvas, convert.format, initialQuality);
           }
@@ -171,36 +217,30 @@ export async function processImagePipeline(
 
           let finalBlob: Blob = initialBlob;
 
-          // If exported blob is larger than original, try lower quality / more aggressive quantization
-          if (originalSizeBytes > 0 && finalBlob.size > originalSizeBytes) {
-            if (convert.format === 'image/png') {
-              const imageData = outCtx.getImageData(0, 0, targetWidth, targetHeight);
-              let currentCnum = initialQuality >= 1.0 ? 256 : Math.max(2, Math.min(256, Math.round(initialQuality * 256)));
-              if (currentCnum === 0) currentCnum = 256;
-
-              while (currentCnum > 2 && finalBlob.size > originalSizeBytes) {
-                currentCnum = Math.max(2, Math.floor(currentCnum * 0.6));
-                const nextArrayBuffer = UPNG.encode([imageData.data.buffer], targetWidth, targetHeight, currentCnum);
-                const nextBlob = new Blob([nextArrayBuffer], { type: 'image/png' });
+          // If exported blob is larger than original, try a lower JPEG/WebP
+          // quality to shrink it. This retry is intentionally NOT applied to
+          // PNG: comparing a re-encoded PNG's size against an unrelated
+          // original (e.g. a much smaller JPEG being converted to PNG, which
+          // is the normal case) previously caused the output to be quantized
+          // down — sometimes to just a handful of colors — purely to chase an
+          // unrelated size target, which is what produced severely incorrect
+          // colors. PNG output now always honors the quality/transparency
+          // logic above and nothing else.
+          if (
+            originalSizeBytes > 0 &&
+            finalBlob.size > originalSizeBytes &&
+            (convert.format === 'image/jpeg' || convert.format === 'image/webp')
+          ) {
+            let currentQuality = initialQuality;
+            while (currentQuality > 0.01 && finalBlob.size > originalSizeBytes) {
+              currentQuality = Math.max(0.01, Number((currentQuality - 0.05).toFixed(2)));
+              const nextBlob = await exportCanvasBlob(outCanvas, convert.format, currentQuality);
+              if (nextBlob) {
                 if (nextBlob.size < finalBlob.size) {
                   finalBlob = nextBlob;
                 }
                 if (finalBlob.size <= originalSizeBytes) {
                   break;
-                }
-              }
-            } else if (convert.format === 'image/jpeg' || convert.format === 'image/webp') {
-              let currentQuality = initialQuality;
-              while (currentQuality > 0.01 && finalBlob.size > originalSizeBytes) {
-                currentQuality = Math.max(0.01, Number((currentQuality - 0.05).toFixed(2)));
-                const nextBlob = await exportCanvasBlob(outCanvas, convert.format, currentQuality);
-                if (nextBlob) {
-                  if (nextBlob.size < finalBlob.size) {
-                    finalBlob = nextBlob;
-                  }
-                  if (finalBlob.size <= originalSizeBytes) {
-                    break;
-                  }
                 }
               }
             }

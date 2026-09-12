@@ -76,6 +76,17 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
   const requestIdRef = useRef<number>(0);
   const prevDataUrlRef = useRef<string | null>(null);
 
+  // Guards against overlapping pipeline runs. Some encodes (large PNGs in
+  // particular) are slow, synchronous, third-party work that can't be
+  // cancelled mid-flight. Without this, dragging a slider repeatedly could
+  // queue up several of these expensive runs back-to-back, each blocking the
+  // main thread in turn — which is what made "the entire site" feel frozen.
+  // Instead: if a run is already in progress, just remember that another one
+  // is needed once it finishes, so at most one expensive run is ever active.
+  const isRunningRef = useRef(false);
+  const rerunNeededRef = useRef(false);
+  const runPipelineRef = useRef<() => Promise<void>>();
+
   // Sync cropRect when crop is reset or external state resets
   useEffect(() => {
     if (!imageState.settings.crop.active && !imageState.settings.crop.rect) {
@@ -108,6 +119,14 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
   const runPipeline = useCallback(async () => {
     if (!imageState.originalImage || !imageState.metadata) return;
 
+    if (isRunningRef.current) {
+      // A run is already in flight — coalesce into a single follow-up run
+      // with the latest settings instead of starting another one now.
+      rerunNeededRef.current = true;
+      return;
+    }
+
+    isRunningRef.current = true;
     const currentReqId = ++requestIdRef.current;
     onUpdateState({ isProcessing: true, error: null });
 
@@ -136,11 +155,33 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
           error: err?.message || 'Failed to process image locally.',
         });
       }
+    } finally {
+      isRunningRef.current = false;
+      if (rerunNeededRef.current) {
+        rerunNeededRef.current = false;
+        // Call via the ref so this always resolves to the latest closure
+        // (freshest imageState.settings), not this invocation's own one.
+        runPipelineRef.current?.();
+      }
     }
   }, [imageState.originalImage, imageState.settings, imageState.metadata, onUpdateState]);
 
   useEffect(() => {
-    runPipeline();
+    runPipelineRef.current = runPipeline;
+  }, [runPipeline]);
+
+  useEffect(() => {
+    // Debounce pipeline execution: rapid successive settings changes (e.g.
+    // dragging the compress quality slider, or typing resize dimensions)
+    // previously triggered a full reprocess on every single tick, which
+    // could stack up expensive synchronous work and made the "Updating..."
+    // indicator flicker on and off for each intermediate value. Waiting for
+    // the settings to settle for a short moment coalesces bursts of changes
+    // into a single run.
+    const timer = setTimeout(() => {
+      runPipeline();
+    }, 120);
+    return () => clearTimeout(timer);
   }, [runPipeline]);
 
   const handleDownload = useCallback(() => {
@@ -324,41 +365,55 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
     : imageState.metadata;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
-      
+    <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 sm:py-8">
+
       {/* Error Banner */}
       {imageState.error && (
-        <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center justify-between">
+        <div className="mb-6 p-4 rounded-lg bg-signal-red/10 border border-signal-red/30 text-signal-red text-sm flex items-center justify-between gap-3">
           <span>{imageState.error}</span>
           <button
             onClick={runPipeline}
-            className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg text-xs font-bold transition-colors"
+            className="px-3 py-1.5 bg-signal-red/15 hover:bg-signal-red/25 rounded-md text-xs font-semibold transition-colors shrink-0"
           >
             Retry
           </button>
         </div>
       )}
 
-      {/* Main Workspace Split */}
+      {/* Main Workspace Split — preview is the dominant element on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
+
+        {/* Preview Panel: comes first in DOM on mobile, right column on desktop */}
+        <div className="lg:col-span-7 lg:order-2">
+          <BeforeAfterPreview
+            originalUrl={previewOriginalUrl}
+            processedResult={previewProcessedResult}
+            metadata={previewMetadata}
+            isProcessing={selectedBatchItem ? selectedBatchItem.status === 'processing' : imageState.isProcessing}
+            onDownload={handleDownload}
+            activeTool={activeTool}
+            cropRect={cropRect}
+            onCropRectChange={handleCropRectChange}
+          />
+        </div>
+
         {/* Left Sidebar: Tool Navigation + Controls */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Main Category Header Tabs + Tool Display */}
-          <div className="p-3 rounded-2xl bg-dark-900 border border-gray-800 space-y-3">
+        <div className="lg:col-span-5 lg:order-1 space-y-5">
+
+          {/* Category Tabs + Sub-tool Row */}
+          <div className="p-3 rounded-2xl surface space-y-3">
             {/* Top Category Tabs Row: EDIT | OPTIMIZE | INSPECT | BATCH */}
-            <div className="flex items-center justify-between gap-1 p-1 rounded-xl bg-dark-950/90 border border-gray-800/90 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 p-1 rounded-lg bg-black/40 border border-line-800 overflow-x-auto no-scrollbar">
               {(['EDIT', 'OPTIMIZE', 'INSPECT', 'BATCH'] as NavCategory[]).map((cat) => {
                 const isActiveCat = activeCategory === cat;
                 return (
                   <button
                     key={cat}
                     onClick={() => handleSelectCategory(cat)}
-                    className={`flex-1 py-2 px-2.5 rounded-lg text-[11px] font-black tracking-wider transition-all uppercase text-center whitespace-nowrap ${
+                    className={`flex-1 py-2 px-2.5 rounded-md text-[11px] font-semibold tracking-wide transition-all uppercase text-center whitespace-nowrap glass-shine ${
                       isActiveCat
-                        ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-md shadow-brand-500/20'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-dark-800/50'
+                        ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-glow-sm'
+                        : 'text-paper-400 hover:text-paper-100 hover:bg-white/[0.04]'
                     }`}
                   >
                     {cat}
@@ -368,7 +423,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
             </div>
 
             {/* Sub-tools of Selected Category */}
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2">
               {toolsByCategory[activeCategory].map((t) => {
                 const IconComp = t.icon;
                 const isActive = activeTool === t.id;
@@ -376,13 +431,13 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
                   <button
                     key={t.id}
                     onClick={() => setActiveTool(t.id)}
-                    className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all border glass-shine ${
                       isActive
-                        ? 'bg-dark-800 border border-cyan-500/50 text-cyan-300 shadow-md shadow-cyan-500/10 font-black'
-                        : 'bg-dark-800/40 hover:bg-dark-800/80 text-gray-300 border border-gray-800/80'
+                        ? 'bg-accent/10 border-accent text-paper-100 shadow-glow-sm'
+                        : 'bg-black/30 hover:bg-white/[0.04] text-paper-300 border-line-800'
                     }`}
                   >
-                    <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-cyan-300' : 'text-gray-400'}`} />
+                    <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-accent-soft' : 'text-paper-500'}`} strokeWidth={1.75} />
                     <span className="truncate">{t.label}</span>
                   </button>
                 );
@@ -391,7 +446,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
           </div>
 
           {/* Active Tool Settings Box */}
-          <div className="p-6 rounded-3xl bg-dark-800/80 border border-gray-800/80 shadow-xl min-h-[340px]">
+          <div className="p-5 sm:p-6 rounded-2xl surface min-h-[340px]">
             {activeTool === 'crop' && (
               <CropTool
                 cropSettings={imageState.settings.crop}
@@ -475,38 +530,24 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
           </div>
 
           {/* Quick Action Footer */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={onResetEdits}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-dark-800 hover:bg-dark-700 border border-gray-700/60 text-xs font-semibold text-gray-300 hover:text-white transition-all"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg surface hover:border-line-600 text-xs font-medium text-paper-300 hover:text-paper-100 transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset All Edits</span>
+              <span>Reset all edits</span>
             </button>
 
             <button
               onClick={handleDownload}
               disabled={!imageState.processedResult}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 hover:from-emerald-500 hover:to-cyan-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold text-xs transition-all shadow-glow-sm hover:shadow-glow disabled:opacity-40 disabled:shadow-none glass-shine"
             >
-              <Download className="w-4 h-4" />
-              <span>Download Image</span>
+              <Download className="w-4 h-4" strokeWidth={2.5} />
+              <span>Download image</span>
             </button>
           </div>
-        </div>
-
-        {/* Right Area: Interactive Preview Panel */}
-        <div className="lg:col-span-7">
-          <BeforeAfterPreview
-            originalUrl={previewOriginalUrl}
-            processedResult={previewProcessedResult}
-            metadata={previewMetadata}
-            isProcessing={selectedBatchItem ? selectedBatchItem.status === 'processing' : imageState.isProcessing}
-            onDownload={handleDownload}
-            activeTool={activeTool}
-            cropRect={cropRect}
-            onCropRectChange={handleCropRectChange}
-          />
         </div>
       </div>
     </div>

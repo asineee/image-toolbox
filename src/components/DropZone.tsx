@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { Upload, ShieldAlert, Sparkles, FileImage, CheckCircle2 } from 'lucide-react';
+import { Upload, ShieldAlert, FileImage } from 'lucide-react';
 import { SAMPLE_IMAGES } from '../utils/sampleImages';
 
 interface DropZoneProps {
@@ -78,25 +78,18 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, onFilesSele
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full max-w-2xl">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative group cursor-pointer overflow-hidden rounded-3xl p-8 sm:p-12 text-center transition-all duration-300 border-2 border-dashed ${
+        className={`relative cursor-pointer rounded-2xl p-10 sm:p-14 text-center transition-all duration-300 border surface ${
           isDragOver
-            ? 'border-cyan-400 bg-brand-950/60 shadow-2xl shadow-cyan-500/20 scale-[1.01]'
-            : 'border-gray-700/70 hover:border-brand-500/80 bg-dark-800/60 hover:bg-dark-800/90 shadow-xl'
+            ? 'border-accent shadow-glow bg-accent/[0.06]'
+            : 'border-line-800 hover:border-line-600 hover:shadow-glow-white'
         }`}
       >
-        {/* Ambient background glow */}
-        <div
-          className={`absolute -inset-1 bg-gradient-to-r from-brand-600 via-cyan-500 to-emerald-500 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl -z-10 ${
-            isDragOver ? 'opacity-30' : ''
-          }`}
-        />
-
         <input
           ref={fileInputRef}
           type="file"
@@ -107,66 +100,60 @@ export const DropZone: React.FC<DropZoneProps> = ({ onImageSelected, onFilesSele
           id="image-upload-input"
         />
 
-        {/* Upload Icon Circle */}
-        <div className="mx-auto w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-brand-900/80 to-dark-700 border border-brand-500/30 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 group-hover:border-brand-400 transition-transform duration-300">
-          <Upload
-            className={`w-10 h-10 sm:w-12 sm:h-12 text-cyan-400 group-hover:text-cyan-300 transition-colors ${
-              isDragOver ? 'animate-bounce' : ''
-            }`}
-          />
+        <div className={`mx-auto w-16 h-16 rounded-xl flex items-center justify-center mb-5 transition-all ${
+          isDragOver
+            ? 'bg-gradient-to-br from-violet-500 via-fuchsia-500 to-blue-500 shadow-glow'
+            : 'bg-ink-800 border border-line-800'
+        }`}>
+          <Upload className={`w-7 h-7 ${isDragOver ? 'text-white' : 'text-paper-400'}`} strokeWidth={1.75} />
         </div>
 
-        {/* Headline */}
-        <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
-          {isDragOver ? 'Drop your image here!' : 'Drop your image here'}
+        <h3 className="text-lg font-semibold text-paper-100 mb-1.5">
+          {isDragOver ? 'Drop to upload' : 'Drop an image here'}
         </h3>
-        
-        <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-          or click anywhere to browse from your device
+
+        <p className="text-sm text-paper-400 mb-6">
+          or <span className="text-paper-100 underline underline-offset-2">browse your files</span>
         </p>
 
-        {/* Primary Browse Button */}
-        <div className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-cyan-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 group-hover:shadow-brand-500/40 transition-all">
-          <FileImage className="w-4 h-4" />
-          <span>Browse Files</span>
+        <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold text-sm transition-all shadow-glow-sm hover:shadow-glow glass-shine">
+          <FileImage className="w-4 h-4" strokeWidth={2} />
+          <span>Choose a file</span>
         </div>
 
-        {/* Supported Formats Pill */}
-        <div className="mt-8 flex items-center justify-center gap-3 text-xs text-gray-400">
-          <span className="px-2.5 py-1 rounded-md bg-dark-900/80 border border-gray-800 font-mono text-gray-300">JPG</span>
-          <span>•</span>
-          <span className="px-2.5 py-1 rounded-md bg-dark-900/80 border border-gray-800 font-mono text-gray-300">PNG</span>
-          <span>•</span>
-          <span className="px-2.5 py-1 rounded-md bg-dark-900/80 border border-gray-800 font-mono text-gray-300">WebP</span>
+        <div className="mt-7 flex items-center justify-center gap-2.5 text-[11px] text-paper-500 font-mono uppercase tracking-wide">
+          <span>JPG</span>
+          <span className="text-line-700">/</span>
+          <span>PNG</span>
+          <span className="text-line-700">/</span>
+          <span>WebP</span>
+          <span className="text-line-700">/</span>
+          <span>GIF</span>
+          <span className="text-line-700">/</span>
+          <span>BMP</span>
         </div>
       </div>
 
-      {/* Error Toast / Alert */}
       {errorMessage && (
-        <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm flex items-center gap-3">
-          <ShieldAlert className="w-5 h-5 shrink-0 text-rose-400" />
+        <div className="mt-3 p-3.5 rounded-lg bg-signal-red/10 border border-signal-red/30 text-signal-red text-sm flex items-center gap-2.5">
+          <ShieldAlert className="w-4 h-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Quick Test Demo Section */}
-      <div className="mt-8 text-center">
-        <p className="text-xs text-gray-400 mb-3 flex items-center justify-center gap-1.5 font-medium">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span>No image on hand? Try a 1-click sample:</span>
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          {SAMPLE_IMAGES.map((sample) => (
+      <div className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs text-paper-500">
+        <span>No image handy? Try a sample —</span>
+        {SAMPLE_IMAGES.map((sample, idx) => (
+          <React.Fragment key={sample.id}>
             <button
-              key={sample.id}
               onClick={() => handleSampleClick(sample.id)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-800/80 hover:bg-dark-700 border border-gray-700/80 text-xs font-medium text-gray-200 hover:text-white transition-all shadow-sm active:scale-95"
+              className="text-paper-300 hover:text-accent-soft underline underline-offset-2 transition-colors"
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-brand-400" />
-              <span>{sample.name}</span>
+              {sample.name}
             </button>
-          ))}
-        </div>
+            {idx < SAMPLE_IMAGES.length - 1 && <span className="text-line-700">·</span>}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );

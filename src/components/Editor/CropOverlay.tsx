@@ -218,7 +218,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
             />
           </mask>
         </defs>
-        <rect width="100%" height="100%" fill="rgba(0, 0, 0, 0.65)" mask="url(#crop-mask)" />
+        <rect width="100%" height="100%" fill="rgba(10, 10, 11, 0.75)" mask="url(#crop-mask)" />
       </svg>
 
       {/* Crop Selection Box */}
@@ -231,23 +231,23 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
         }}
         onMouseDown={handleMouseDown('move')}
         onTouchStart={handleTouchStart('move')}
-        className="absolute border-2 border-cyan-400 bg-transparent shadow-2xl cursor-move flex flex-col justify-between group overflow-visible"
+        className="absolute border-2 border-accent bg-transparent cursor-move flex flex-col justify-between group overflow-visible"
       >
         {/* Rule of Thirds Grid Lines */}
         <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
-          <div className="border-r border-b border-white/60" />
-          <div className="border-r border-b border-white/60" />
-          <div className="border-b border-white/60" />
-          <div className="border-r border-b border-white/60" />
-          <div className="border-r border-b border-white/60" />
-          <div className="border-b border-white/60" />
-          <div className="border-r border-white/60" />
-          <div className="border-r border-white/60" />
+          <div className="border-r border-b border-white/50" />
+          <div className="border-r border-b border-white/50" />
+          <div className="border-b border-white/50" />
+          <div className="border-r border-b border-white/50" />
+          <div className="border-r border-b border-white/50" />
+          <div className="border-b border-white/50" />
+          <div className="border-r border-white/50" />
+          <div className="border-r border-white/50" />
           <div />
         </div>
 
         {/* Pixel Dimensions Badge */}
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-dark-900/95 text-cyan-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-cyan-500/40 shadow-lg whitespace-nowrap pointer-events-none z-30">
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-ink-950 text-accent text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border border-accent/40 whitespace-nowrap pointer-events-none z-30">
           {pixelCropW} × {pixelCropH} px
         </div>
 
@@ -256,56 +256,56 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
         <div
           onMouseDown={handleMouseDown('nw')}
           onTouchStart={handleTouchStart('nw')}
-          className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-nwse-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize North-West"
         />
         {/* N */}
         <div
           onMouseDown={handleMouseDown('n')}
           onTouchStart={handleTouchStart('n')}
-          className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-ns-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-ns-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize North"
         />
         {/* NE */}
         <div
           onMouseDown={handleMouseDown('ne')}
           onTouchStart={handleTouchStart('ne')}
-          className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-nesw-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize North-East"
         />
         {/* E */}
         <div
           onMouseDown={handleMouseDown('e')}
           onTouchStart={handleTouchStart('e')}
-          className="absolute top-1/2 -right-2.5 -translate-y-1/2 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-ew-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute top-1/2 -right-2.5 -translate-y-1/2 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-ew-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize East"
         />
         {/* SE */}
         <div
           onMouseDown={handleMouseDown('se')}
           onTouchStart={handleTouchStart('se')}
-          className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-nwse-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -bottom-2.5 -right-2.5 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-nwse-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize South-East"
         />
         {/* S */}
         <div
           onMouseDown={handleMouseDown('s')}
           onTouchStart={handleTouchStart('s')}
-          className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-ns-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-ns-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize South"
         />
         {/* SW */}
         <div
           onMouseDown={handleMouseDown('sw')}
           onTouchStart={handleTouchStart('sw')}
-          className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-nesw-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute -bottom-2.5 -left-2.5 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-nesw-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize South-West"
         />
         {/* W */}
         <div
           onMouseDown={handleMouseDown('w')}
           onTouchStart={handleTouchStart('w')}
-          className="absolute top-1/2 -left-2.5 -translate-y-1/2 w-5 h-5 bg-cyan-400 border-2 border-white rounded-full cursor-ew-resize shadow-lg hover:scale-125 transition-transform z-30"
+          className="absolute top-1/2 -left-2.5 -translate-y-1/2 w-5 h-5 bg-accent border-2 border-ink-950 rounded-full cursor-ew-resize hover:scale-125 shadow-glow-sm transition-transform z-30"
           title="Resize West"
         />
       </div>
