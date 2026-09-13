@@ -68,7 +68,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected, onFil
     <section className="relative px-4 sm:px-6 lg:px-8 pt-20 sm:pt-28 pb-20 overflow-hidden">
       <div className="max-w-5xl mx-auto">
 
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-16 items-start">
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 lg:gap-16 items-center">
 
           {/* Left: Headline + copy */}
           <div className="animate-fade-up">
@@ -86,41 +86,22 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onImageSelected, onFil
               <span className="text-paper-100"> them anywhere.</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-paper-400 leading-relaxed max-w-md mb-10">
+            <p className="text-base sm:text-lg text-paper-400 leading-relaxed max-w-md">
               Crop, resize, compress, and convert photos entirely inside your browser tab. No accounts, no cloud storage, no waiting on uploads.
             </p>
-
-            <div>
-              <DropZone onImageSelected={onImageSelected} onFilesSelected={onFilesSelected} />
-              {onOpenBatch && (
-                <button
-                  onClick={onOpenBatch}
-                  className="mt-4 text-xs text-paper-400 hover:text-paper-100 underline underline-offset-2 transition-colors"
-                >
-                  Or process several images at once with batch mode
-                </button>
-              )}
-            </div>
           </div>
 
-          {/* Right column on desktop: tool list preview */}
-          <div className="hidden lg:block pt-2">
-            <div className="rounded-2xl overflow-hidden divide-y divide-line-800 surface shadow-glow-white">
-              {tools.slice(0, 5).map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <div key={tool.name} className="flex items-start gap-3 p-4 hover:bg-white/[0.03] transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-ink-800 border border-line-800 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-accent-soft" strokeWidth={1.75} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-paper-100">{tool.name}</div>
-                      <div className="text-xs text-paper-500 mt-0.5">{tool.desc}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {/* Right: main call-to-action — upload area */}
+          <div className="w-full lg:pt-2">
+            <DropZone onImageSelected={onImageSelected} onFilesSelected={onFilesSelected} />
+            {onOpenBatch && (
+              <button
+                onClick={onOpenBatch}
+                className="mt-4 text-xs text-paper-400 hover:text-paper-100 underline underline-offset-2 transition-colors"
+              >
+                Or process several images at once with batch mode
+              </button>
+            )}
           </div>
         </div>
 

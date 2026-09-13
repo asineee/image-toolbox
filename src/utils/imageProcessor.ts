@@ -291,7 +291,9 @@ export function generateOutputFilename(
   const ext = mimeToExtension(format);
   const cleanBase = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
   
-  let suffix = 'edited';
+  // No dedicated suffix for this tool (e.g. renaming via Image Info) —
+  // leave the filename exactly as the user set it, with no suffix added.
+  let suffix = '';
   if (toolType === 'crop') suffix = 'cropped';
   else if (toolType === 'resize') suffix = 'resized';
   else if (toolType === 'compress') suffix = 'compressed';
@@ -299,5 +301,6 @@ export function generateOutputFilename(
   else if (toolType === 'rotate' || toolType === 'flip') suffix = 'rotated';
   else if (toolType === 'clean') suffix = 'cleaned';
 
-  return `${cleanBase || 'image'}-${suffix}.${ext}`;
+  const base = cleanBase || 'image';
+  return suffix ? `${base}-${suffix}.${ext}` : `${base}.${ext}`;
 }

@@ -116,7 +116,13 @@ export const BeforeAfterPreview: React.FC<BeforeAfterPreviewProps> = memo(({
       </div>
 
       {/* Main Image View Container */}
-      <div className="relative flex-1 min-h-[380px] sm:min-h-[480px] flex items-center justify-center p-6 bg-black/40 overflow-hidden">
+      {/* Extra top padding while cropping: the crop handles/dimension badge
+          render outside the image's own box, so when the crop rect touches
+          the top edge they need more clearance than the default padding
+          gives before this container's overflow-hidden clips them. */}
+      <div className={`relative flex-1 min-h-[380px] sm:min-h-[480px] flex items-center justify-center p-6 bg-black/40 overflow-hidden ${
+        activeTool === 'crop' ? 'pt-10' : ''
+      }`}>
 
         {isProcessing && (
           <div className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-full surface text-paper-300 text-xs font-medium flex items-center gap-2 shadow-glow-sm">

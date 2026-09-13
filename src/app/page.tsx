@@ -284,6 +284,8 @@ export default function HomePage() {
             onUpdateState={handleUpdateState}
             onResetEdits={handleResetEdits}
             initialBatchFiles={initialBatchFiles}
+            onImageSelected={handleImageSelected}
+            onFilesSelected={handleFilesSelected}
           />
         ) : (
           <>

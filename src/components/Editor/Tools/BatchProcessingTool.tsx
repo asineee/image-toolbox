@@ -25,7 +25,8 @@ import {
   FileArchive,
   FileType,
   ShieldCheck,
-  Archive
+  Archive,
+  ChevronDown
 } from 'lucide-react';
 
 interface BatchProcessingToolProps {
@@ -532,21 +533,24 @@ export const BatchProcessingTool: React.FC<BatchProcessingToolProps> = ({
         {settings.operation === 'convert' && (
           <div className="space-y-2">
             <label className="text-xs font-medium text-paper-400 block">Target format</label>
-            <select
-              value={settings.convert.format}
-              onChange={(e) => {
-                const fmt = e.target.value as TargetFormat;
-                onChangeSettings({
-                  ...settings,
-                  convert: { format: fmt },
-                });
-              }}
-              className="w-full bg-ink-900 border border-line-800 rounded-md px-3 py-2.5 text-xs font-medium text-paper-100 focus:outline-none focus:border-accent"
-            >
-              <option value="image/jpeg">JPEG (.jpg)</option>
-              <option value="image/png">PNG (.png)</option>
-              <option value="image/webp">WebP (.webp)</option>
-            </select>
+            <div className="relative">
+              <select
+                value={settings.convert.format}
+                onChange={(e) => {
+                  const fmt = e.target.value as TargetFormat;
+                  onChangeSettings({
+                    ...settings,
+                    convert: { format: fmt },
+                  });
+                }}
+                className="w-full appearance-none bg-ink-900 border border-line-800 rounded-md pl-3 pr-9 py-2.5 text-xs font-medium text-paper-100 focus:outline-none focus:border-accent cursor-pointer"
+              >
+                <option className="bg-ink-900 text-paper-100" value="image/jpeg">JPEG (.jpg)</option>
+                <option className="bg-ink-900 text-paper-100" value="image/png">PNG (.png)</option>
+                <option className="bg-ink-900 text-paper-100" value="image/webp">WebP (.webp)</option>
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-paper-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.75} />
+            </div>
           </div>
         )}
       </div>

@@ -1,22 +1,39 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImageMetadata } from '../../../types/image';
-import { ShieldCheck, HardDrive, FileText, Maximize2, FileCheck, Layers } from 'lucide-react';
+import { ShieldCheck, HardDrive, FileText, Maximize2, FileCheck, Layers, Check, Pencil } from 'lucide-react';
 // Icons imported above are used per-row in infoRows for a consistent, restrained data table.
 
 interface ImageInfoToolProps {
   metadata: ImageMetadata;
+  onRename?: (newFilename: string) => void;
 }
 
-export const ImageInfoTool: React.FC<ImageInfoToolProps> = ({ metadata }) => {
+export const ImageInfoTool: React.FC<ImageInfoToolProps> = ({ metadata, onRename }) => {
+  // Split the current filename into base name + extension so renaming can
+  // never drop or change the file's extension.
+  const lastDotIndex = metadata.filename.lastIndexOf('.');
+  const extension = lastDotIndex > 0 ? metadata.filename.substring(lastDotIndex) : '';
+  const baseName = lastDotIndex > 0 ? metadata.filename.substring(0, lastDotIndex) : metadata.filename;
+
+  const [nameInput, setNameInput] = useState(baseName);
+
+  // Keep the input in sync when the filename changes from outside this
+  // component (a new image is uploaded, edits are reset, etc.).
+  useEffect(() => {
+    setNameInput(baseName);
+  }, [baseName]);
+
+  const trimmedInput = nameInput.trim();
+  const isDirty = trimmedInput !== '' && trimmedInput !== baseName;
+
+  const handleSave = () => {
+    if (!trimmedInput || !onRename) return;
+    onRename(`${trimmedInput}${extension}`);
+  };
+
   const infoRows = [
-    {
-      label: 'Filename',
-      value: metadata.filename,
-      icon: FileText,
-      mono: true,
-    },
     {
       label: 'File Type / Format',
       value: metadata.fileType.toUpperCase() || 'IMAGE',
@@ -52,6 +69,55 @@ export const ImageInfoTool: React.FC<ImageInfoToolProps> = ({ metadata }) => {
 
       {/* Metadata Table Card */}
       <div className="rounded-lg bg-ink-950 border border-line-800 divide-y divide-line-800 glass-shine">
+
+        {/* Filename row — editable */}
+        <div className="p-3.5 bg-accent/[0.04]">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 shrink-0">
+              <FileText className="w-3.5 h-3.5 text-paper-500" strokeWidth={1.75} />
+              <span className="text-xs font-medium text-paper-400">Filename</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+              <label
+                htmlFor="image-info-filename-input"
+                className="group flex items-center gap-1.5 min-w-0 max-w-[210px] sm:max-w-[270px] w-full sm:w-auto bg-ink-900/80 border border-line-700 rounded-md pl-2 pr-2 py-1.5 sm:py-1 cursor-text hover:border-accent/50 hover:bg-ink-900 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40 focus-within:bg-ink-900 transition-colors"
+              >
+                <Pencil
+                  className="w-3 h-3 text-accent/70 group-focus-within:text-accent shrink-0"
+                  strokeWidth={2}
+                />
+                <input
+                  id="image-info-filename-input"
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSave();
+                  }}
+                  placeholder="Click to rename"
+                  spellCheck={false}
+                  aria-label="Filename (editable)"
+                  className="w-full min-w-0 bg-transparent text-xs font-mono text-paper-100 text-right focus:outline-none truncate placeholder:text-paper-500 placeholder:font-sans"
+                />
+                <span className="text-xs font-mono text-paper-500 shrink-0">{extension}</span>
+              </label>
+              {isDirty && (
+                <button
+                  onClick={handleSave}
+                  title="Save filename"
+                  className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-accent/15 hover:bg-accent/25 text-accent text-[11px] font-semibold transition-colors"
+                >
+                  <Check className="w-3 h-3" strokeWidth={2.5} />
+                  <span>Save</span>
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="mt-1.5 text-[10.5px] text-paper-500 text-right sm:text-right">
+            Tap the name to rename it — extension stays the same.
+          </p>
+        </div>
+
         {infoRows.map((row) => {
           const IconComp = row.icon;
           return (

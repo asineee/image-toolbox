@@ -24,20 +24,66 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
   const [bounds, setBounds] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const startPosRef = useRef<{ pageX: number; pageY: number; rect: CropRect } | null>(null);
 
+  // The <img> renders with `object-fit: contain`. Its own DOM box (from
+  // getBoundingClientRect) is not guaranteed to be pixel-identical to the
+  // actual painted image content — if the box's aspect ratio ever diverges
+  // even slightly from the image's real naturalWidth/naturalHeight ratio
+  // (most visible on tall portrait photos), `object-contain` inserts blank
+  // letterbox bars *inside* the img's own box to preserve the picture's
+  // aspect ratio. Treating the whole img box as "the image" then places the
+  // crop selection over part letterbox, part photo. To avoid that, derive
+  // the actual visible content rectangle (excluding any such letterboxing)
+  // from the element's rendered box size and its true natural aspect ratio.
+  const getContentRect = useCallback((imgEl: HTMLImageElement, parentEl: Element) => {
+    const parentRect = parentEl.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+
+    const naturalW = imgEl.naturalWidth || imgRect.width;
+    const naturalH = imgEl.naturalHeight || imgRect.height;
+
+    const boxW = imgRect.width;
+    const boxH = imgRect.height;
+
+    if (boxW <= 0 || boxH <= 0 || naturalW <= 0 || naturalH <= 0) {
+      return { left: imgRect.left - parentRect.left, top: imgRect.top - parentRect.top, width: boxW, height: boxH };
+    }
+
+    const boxRatio = boxW / boxH;
+    const naturalRatio = naturalW / naturalH;
+
+    let contentWidth = boxW;
+    let contentHeight = boxH;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (naturalRatio > boxRatio) {
+      // Image is relatively wider than the box: letterboxed top/bottom.
+      contentWidth = boxW;
+      contentHeight = boxW / naturalRatio;
+      offsetY = (boxH - contentHeight) / 2;
+    } else if (naturalRatio < boxRatio) {
+      // Image is relatively taller than the box: letterboxed left/right.
+      contentHeight = boxH;
+      contentWidth = boxH * naturalRatio;
+      offsetX = (boxW - contentWidth) / 2;
+    }
+
+    return {
+      left: imgRect.left - parentRect.left + offsetX,
+      top: imgRect.top - parentRect.top + offsetY,
+      width: contentWidth,
+      height: contentHeight,
+    };
+  }, []);
+
   const updateBounds = useCallback(() => {
     if (!imageElement || !imageElement.parentElement) return;
-    const parentRect = imageElement.parentElement.getBoundingClientRect();
-    const imgRect = imageElement.getBoundingClientRect();
+    const contentRect = getContentRect(imageElement, imageElement.parentElement);
 
-    if (imgRect.width > 0 && imgRect.height > 0) {
-      setBounds({
-        left: imgRect.left - parentRect.left,
-        top: imgRect.top - parentRect.top,
-        width: imgRect.width,
-        height: imgRect.height,
-      });
+    if (contentRect.width > 0 && contentRect.height > 0) {
+      setBounds(contentRect);
     }
-  }, [imageElement]);
+  }, [imageElement, getContentRect]);
 
   useEffect(() => {
     updateBounds();
@@ -97,13 +143,17 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
     if (!activeHandle || !imageElement) return;
 
     const handlePointerMove = (pageX: number, pageY: number) => {
-      if (!startPosRef.current || !imageElement) return;
+      if (!startPosRef.current || !imageElement || !imageElement.parentElement) return;
 
-      const imgRect = imageElement.getBoundingClientRect();
-      if (imgRect.width <= 0 || imgRect.height <= 0) return;
+      // Normalize drag deltas against the actual visible image content size
+      // (excluding any object-contain letterboxing), matching the rect the
+      // overlay is positioned against — otherwise dragging would move the
+      // selection faster/slower than the cursor whenever letterboxing exists.
+      const contentRect = getContentRect(imageElement, imageElement.parentElement);
+      if (contentRect.width <= 0 || contentRect.height <= 0) return;
 
-      const deltaX = (pageX - startPosRef.current.pageX) / imgRect.width;
-      const deltaY = (pageY - startPosRef.current.pageY) / imgRect.height;
+      const deltaX = (pageX - startPosRef.current.pageX) / contentRect.width;
+      const deltaY = (pageY - startPosRef.current.pageY) / contentRect.height;
       const initial = startPosRef.current.rect;
 
       const MIN_SIZE = 0.02; // 2% minimum crop dimension
@@ -182,7 +232,7 @@ export const CropOverlay: React.FC<CropOverlayProps> = memo(({
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onPointerUp);
     };
-  }, [activeHandle, imageElement, onChange]);
+  }, [activeHandle, imageElement, onChange, getContentRect]);
 
   if (!imageElement || !bounds) return null;
 

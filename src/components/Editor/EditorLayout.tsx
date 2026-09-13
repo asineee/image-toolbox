@@ -13,6 +13,7 @@ import { ImageInfoTool } from './Tools/ImageInfoTool';
 import { CropTool } from './Tools/CropTool';
 import { MetadataCleanerTool } from './Tools/MetadataCleanerTool';
 import { BatchProcessingTool } from './Tools/BatchProcessingTool';
+import { DropZone } from '../DropZone';
 import { 
   Maximize2, 
   FileArchive, 
@@ -23,7 +24,8 @@ import {
   RotateCcw,
   Crop,
   ShieldCheck,
-  Layers
+  Layers,
+  Upload
 } from 'lucide-react';
 
 interface EditorLayoutProps {
@@ -32,6 +34,8 @@ interface EditorLayoutProps {
   onUpdateState: (partial: Partial<ImageState>) => void;
   onResetEdits: () => void;
   initialBatchFiles?: File[];
+  onImageSelected?: (file: File) => void;
+  onFilesSelected?: (files: File[]) => void;
 }
 
 export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
@@ -40,6 +44,8 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
   onUpdateState,
   onResetEdits,
   initialBatchFiles,
+  onImageSelected,
+  onFilesSelected,
 }) => {
   const [activeTool, setActiveTool] = useState<ToolType>(imageState.activeTool || 'crop');
   const [originalObjUrl, setOriginalObjUrl] = useState<string>('');
@@ -269,8 +275,12 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
     });
   }, [imageState.metadata, imageState.settings, onUpdateSettings]);
 
-  const handleApplyClean = useCallback(() => {
-    onUpdateSettings({
+  const handleRenameFile = useCallback((newFilename: string) => {
+    if (!imageState.metadata) return;
+    onUpdateState({ metadata: { ...imageState.metadata, filename: newFilename } });
+  }, [imageState.metadata, onUpdateState]);
+
+  const handleApplyClean = useCallback(() => {    onUpdateSettings({
       ...imageState.settings,
       clean: {
         active: true,
@@ -330,7 +340,24 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
 
   const [selectedBatchItem, setSelectedBatchItem] = useState<BatchItem | null>(null);
 
-  if (!imageState.metadata && activeTool !== 'batch') return null;
+  // Whether we're in batch mode is tracked by page-level imageState.activeTool,
+  // not the local per-category `activeTool` (which changes as you switch
+  // EDIT/OPTIMIZE/INSPECT/BATCH tabs while still in batch mode). Guarding on
+  // the local value caused this component to return null (blank screen) the
+  // moment a category other than BATCH was selected while no single image
+  // was loaded.
+  const isBatchMode = imageState.activeTool === 'batch';
+
+  if (!imageState.metadata && !isBatchMode) return null;
+
+  // Switching from BATCH to an EDIT/OPTIMIZE/INSPECT category tool (via
+  // handleSelectCategory) changes the local `activeTool`, but there is no
+  // single image loaded yet (only queued batch files) — no metadata exists.
+  // That's a distinct state from "batch mode" and from "normal editing":
+  // the user has left batch mode but hasn't picked an image for the newly
+  // selected tool yet. Surface the normal upload flow for that state
+  // instead of leaving the preview stuck on a stale "Batch preview" fallback.
+  const needsSingleImageUpload = !imageState.metadata && activeTool !== 'batch';
 
   const currentW = imageState.processedResult
     ? imageState.processedResult.width
@@ -385,16 +412,28 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
 
         {/* Preview Panel: comes first in DOM on mobile, right column on desktop */}
         <div className="lg:col-span-7 lg:order-2">
-          <BeforeAfterPreview
-            originalUrl={previewOriginalUrl}
-            processedResult={previewProcessedResult}
-            metadata={previewMetadata}
-            isProcessing={selectedBatchItem ? selectedBatchItem.status === 'processing' : imageState.isProcessing}
-            onDownload={handleDownload}
-            activeTool={activeTool}
-            cropRect={cropRect}
-            onCropRectChange={handleCropRectChange}
-          />
+          {needsSingleImageUpload ? (
+            <div className="flex flex-col h-full rounded-2xl surface overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-line-800 flex items-center gap-2.5">
+                <Upload className="w-4 h-4 text-paper-500" />
+                <h4 className="text-sm font-medium text-paper-300">No image loaded</h4>
+              </div>
+              <div className="flex-1 min-h-[380px] sm:min-h-[480px] flex items-center justify-center p-6 bg-black/40">
+                <DropZone onImageSelected={onImageSelected || (() => {})} onFilesSelected={onFilesSelected} />
+              </div>
+            </div>
+          ) : (
+            <BeforeAfterPreview
+              originalUrl={previewOriginalUrl}
+              processedResult={previewProcessedResult}
+              metadata={previewMetadata}
+              isProcessing={selectedBatchItem ? selectedBatchItem.status === 'processing' : imageState.isProcessing}
+              onDownload={handleDownload}
+              activeTool={activeTool}
+              cropRect={cropRect}
+              onCropRectChange={handleCropRectChange}
+            />
+          )}
         </div>
 
         {/* Left Sidebar: Tool Navigation + Controls */}
@@ -447,7 +486,19 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
 
           {/* Active Tool Settings Box */}
           <div className="p-5 sm:p-6 rounded-2xl surface min-h-[340px]">
-            {activeTool === 'crop' && (
+            {needsSingleImageUpload && (
+              <div className="h-full min-h-[290px] flex flex-col items-center justify-center text-center gap-2 text-paper-500">
+                <Upload className="w-6 h-6 text-paper-500/60" strokeWidth={1.5} />
+                <p className="text-sm font-medium text-paper-300">
+                  Add an image to use {toolsByCategory[activeCategory].find((t) => t.id === activeTool)?.label || 'this tool'}
+                </p>
+                <p className="text-xs text-paper-500 max-w-[260px]">
+                  Upload a single image above, or switch to the Batch tab to process several images at once.
+                </p>
+              </div>
+            )}
+
+            {!needsSingleImageUpload && activeTool === 'crop' && (
               <CropTool
                 cropSettings={imageState.settings.crop}
                 imageWidth={currentW}
@@ -505,7 +556,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
               />
             )}
 
-            {activeTool === 'convert' && (
+            {!needsSingleImageUpload && activeTool === 'convert' && (
               <ConvertTool
                 currentFormat={imageState.settings.convert.format}
                 settings={imageState.settings.convert}
@@ -515,7 +566,7 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
               />
             )}
 
-            {activeTool === 'rotate' && (
+            {!needsSingleImageUpload && activeTool === 'rotate' && (
               <RotateFlipTool
                 settings={imageState.settings.rotateFlip}
                 onChange={(newRotateFlip) =>
@@ -524,8 +575,8 @@ export const EditorLayout: React.FC<EditorLayoutProps> = memo(({
               />
             )}
 
-            {activeTool === 'info' && imageState.metadata && (
-              <ImageInfoTool metadata={imageState.metadata} />
+            {!needsSingleImageUpload && activeTool === 'info' && imageState.metadata && (
+              <ImageInfoTool metadata={imageState.metadata} onRename={handleRenameFile} />
             )}
           </div>
 
